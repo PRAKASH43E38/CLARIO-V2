@@ -1,0 +1,120 @@
+Metadata-Version: 2.4
+Name: clario
+Version: 0.1.0
+Summary: Adaptive Multi-Agent AI Learning Platform
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi>=0.109.0
+Requires-Dist: uvicorn[standard]>=0.27.0
+Requires-Dist: sqlalchemy>=2.0.0
+Requires-Dist: pydantic>=2.6.0
+Requires-Dist: pydantic-settings>=2.1.0
+Requires-Dist: python-multipart>=0.0.6
+Requires-Dist: google-generativeai>=0.8.0
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.23.0; extra == "dev"
+Requires-Dist: httpx>=0.26.0; extra == "dev"
+
+# CLARIO-V2
+
+> **Adaptive Multi-Agent AI Learning Platform**
+
+CLARIO provides an adaptive learning experience tailored to what the learner needs next. It replaces generic AI chatbot responses with a coordinated multi-agent system.
+
+---
+
+## Architecture Overview
+
+```mermaid
+flowchart TD
+    Learner[Learner] --> Frontend[Frontend UX Companions]
+    Frontend --> NOVA[NOVA Central Orchestrator]
+    NOVA --> Research[Research Agent]
+    NOVA --> Teaching[Teaching Agent]
+    NOVA --> Thinking[Critical Thinking Agent]
+    NOVA --> Practical[Practical Agent]
+    NOVA --> Quiz[Quiz Agent]
+    NOVA --> Ellara[Evaluation Agent / Ellara]
+    Ellara --> NOVA
+    NOVA --> DB[(SQLite Database)]
+```
+
+---
+
+## Documentation Index
+- [PROJECT.md](file:///C:/clario/CLARIO-V2/PROJECT.md): Core vision, learner state, discovery flow, and MVP scope.
+- [AGENTS.md](file:///C:/clario/CLARIO-V2/AGENTS.md): Detailed specifications for NOVA and all specialized agents.
+- [ARCHITECTURE.md](file:///C:/clario/CLARIO-V2/ARCHITECTURE.md): System architecture, tech stack, and component interactions.
+- [API.md](file:///C:/clario/CLARIO-V2/API.md): REST and streaming API contracts.
+- [DATABASE.md](file:///C:/clario/CLARIO-V2/DATABASE.md): SQLite schema, entity-relationship diagrams, and state models.
+- [IMPLEMENTATION_PLAN.md](file:///C:/clario/CLARIO-V2/IMPLEMENTATION_PLAN.md): Step-by-step phased build roadmap.
+- [docs/](file:///C:/clario/CLARIO-V2/docs): Deep dives and Architecture Decision Records (ADRs).
+
+---
+
+## Status
+- **Current Phase**: Phase 5 — Frontend Complete.
+- **Implemented**: Database Layer, AI Provider & 6 Specialized Agents, NOVA Orchestrator, Adaptive Learning Engine, FastAPI REST API, React/Vite Frontend with Duolingo-inspired UX.
+- **Test Coverage**: 44 backend tests passing (27 core + 17 API). Frontend builds successfully.
+- **Application Code**: Full stack complete.
+
+---
+
+## Quick Start
+
+### Prerequisites
+- Python 3.12+
+- Node.js 18+
+- (Optional) Google Gemini API key for real AI responses — add to `.env`
+
+### Backend (FastAPI)
+```bash
+# From repository root
+cd C:\clario\CLARIO-V2
+
+# Install dependencies (one-time)
+pip install -e .
+
+# Start backend (runs on http://localhost:8000)
+python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
+```
+
+**Verify:** `GET http://localhost:8000/health` → `{"status":"ok","service":"clario-api","version":"0.1.0"}`
+
+**Important:** Always run the backend from the **repository root** (`C:\clario\CLARIO-V2`), not from inside `backend/`. The package uses `backend.app.*` imports which require the repo root on `PYTHONPATH`. The editable install (`pip install -e .`) makes this work from anywhere, but the documented command above is the standard way.
+
+### Frontend (React + Vite)
+```bash
+# From repository root
+cd C:\clario\CLARIO-V2\frontend
+
+# Install dependencies (one-time)
+npm install
+
+# Start dev server (runs on http://localhost:5173)
+npm run dev
+```
+
+The frontend proxies `/api/*` requests to the backend at `http://localhost:8000` (configured in `vite.config.ts`).
+
+### Run Tests
+```bash
+# Backend tests (from repo root)
+cd C:\clario\CLARIO-V2
+python -m pytest -q
+
+# Frontend build verification
+cd C:\clario\CLARIO-V2\frontend
+npm run build
+```
+
+### Environment Configuration
+Copy `.env.example` to `.env` and add your Gemini API key for real AI responses:
+```bash
+# Windows (PowerShell)
+Copy-Item .env.example .env
+# Then edit .env and set GEMINI_API_KEY=your-key-here
+```
+
+Without an API key, the system uses a deterministic MockAIProvider for testing and demos.

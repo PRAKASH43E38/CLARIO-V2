@@ -1,0 +1,251 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-primary: 59 130 246;
+    --color-secondary: 30 150 235;
+    --color-success: 34 197 94;
+    --color-warning: 245 158 11;
+    --color-attention: 239 68 68;
+  }
+
+  * {
+    @apply border-clario-surface-200;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply font-sans text-clario-surface-900 bg-clario-bg-50 antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  ::selection {
+    @apply bg-clario-primary-200 text-clario-primary-900;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-clario-primary-500 ring-offset-2 ring-offset-white;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 font-semibold px-6 py-3.5 rounded-2xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn bg-clario-primary-600 text-white hover:bg-clario-primary-700 active:bg-clario-primary-800 focus-visible:ring-clario-primary-500 shadow-soft hover:shadow-card active:scale-[0.98];
+  }
+
+  .btn-secondary {
+    @apply btn bg-clario-surface-100 text-clario-surface-700 hover:bg-clario-surface-200 active:bg-clario-surface-300 focus-visible:ring-clario-surface-400;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent text-clario-surface-600 hover:bg-clario-surface-100 active:bg-clario-surface-200 focus-visible:ring-clario-surface-400;
+  }
+
+  .btn-success {
+    @apply btn bg-clario-success-500 text-white hover:bg-clario-success-600 active:bg-clario-success-700 focus-visible:ring-clario-success-400;
+  }
+
+  .btn-attention {
+    @apply btn bg-clario-attention-500 text-white hover:bg-clario-attention-600 active:bg-clario-attention-700 focus-visible:ring-clario-attention-400;
+  }
+
+  .btn-lg {
+    @apply px-8 py-4 text-lg;
+  }
+
+  .btn-sm {
+    @apply px-4 py-2.5 text-sm;
+  }
+
+  .btn-icon {
+    @apply p-3 rounded-xl;
+  }
+
+  .card {
+    @apply bg-white rounded-3xl shadow-card border border-clario-surface-100 overflow-hidden transition-all duration-200;
+  }
+
+  .card-hover {
+    @apply card hover:shadow-elevated hover:-translate-y-0.5;
+  }
+
+  .card-interactive {
+    @apply card-hover cursor-pointer active:scale-[0.99] active:shadow-soft;
+  }
+
+  .input {
+    @apply w-full px-4 py-3.5 bg-white border-2 border-clario-surface-200 rounded-2xl text-clario-surface-900 placeholder-clario-surface-400 transition-all duration-200 focus:border-clario-primary-500 focus:ring-2 focus:ring-clario-primary-500/20 focus:outline-none;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-clario-surface-700 mb-1.5;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+  }
+
+  .badge-primary {
+    @apply badge bg-clario-primary-100 text-clario-primary-700;
+  }
+
+  .badge-success {
+    @apply badge bg-clario-success-100 text-clario-success-700;
+  }
+
+  .badge-warning {
+    @apply badge bg-clario-warning-100 text-clario-warning-700;
+  }
+
+  .badge-attention {
+    @apply badge bg-clario-attention-100 text-clario-attention-700;
+  }
+
+  .badge-neutral {
+    @apply badge bg-clario-surface-100 text-clario-surface-700;
+  }
+
+  .progress-ring {
+    @apply transform -rotate-90;
+  }
+
+  .progress-ring-bg {
+    @apply text-clario-surface-200;
+  }
+
+  .progress-ring-fill {
+    @apply text-clario-primary-500 transition-all duration-1000 ease-out;
+  }
+
+  .learning-stage {
+    @apply animate-slide-up;
+  }
+
+  .quiz-option {
+    @apply relative w-full p-5 rounded-2xl border-2 border-clario-surface-200 bg-white text-left text-clario-surface-900 font-medium transition-all duration-200 hover:border-clario-primary-300 hover:bg-clario-primary-50 focus:border-clario-primary-500 focus:ring-2 focus:ring-clario-primary-500/20 cursor-pointer;
+  }
+
+  .quiz-option-selected {
+    @apply border-clario-primary-500 bg-clario-primary-50 ring-2 ring-clario-primary-500/20;
+  }
+
+  .quiz-option-correct {
+    @apply border-clario-success-500 bg-clario-success-50 text-clario-success-800 animate-bounce-in;
+  }
+
+  .quiz-option-incorrect {
+    @apply border-clario-attention-500 bg-clario-attention-50 text-clario-attention-800 animate-shake;
+  }
+
+  .concept-node {
+    @apply relative flex flex-col items-center gap-2;
+  }
+
+  .concept-node-circle {
+    @apply w-16 h-16 rounded-full flex items-center justify-center font-bold text-lg transition-all duration-300;
+  }
+
+  .concept-node-completed .concept-node-circle {
+    @apply bg-clario-success-500 text-white shadow-lg shadow-clario-success-500/30;
+  }
+
+  .concept-node-mastered .concept-node-circle {
+    @apply bg-gradient-to-br from-clario-success-500 to-clario-success-600 text-white shadow-lg shadow-clario-success-500/40 animate-pulse-soft;
+  }
+
+  .concept-node-current .concept-node-circle {
+    @apply bg-clario-primary-500 text-white shadow-lg shadow-clario-primary-500/40 ring-4 ring-clario-primary-500/20 animate-pulse-soft;
+  }
+
+  .concept-node-learning .concept-node-circle {
+    @apply bg-clario-secondary-500 text-white shadow-soft;
+  }
+
+  .concept-node-upcoming .concept-node-circle {
+    @apply bg-clario-surface-200 text-clario-surface-500;
+  }
+
+  .concept-node-remediating .concept-node-circle {
+    @apply bg-clario-warning-500 text-white shadow-soft ring-4 ring-clario-warning-500/20;
+  }
+
+  .concept-node-connector {
+    @apply w-1 h-24 bg-clario-surface-200;
+  }
+
+  .concept-node-connector-active {
+    @apply bg-gradient-to-b from-clario-primary-500 to-clario-secondary-500;
+  }
+
+  .skeleton {
+    @apply animate-pulse bg-clario-surface-200 rounded-xl;
+  }
+
+  .skeleton-text {
+    @apply h-4 w-3/4 skeleton;
+  }
+
+  .skeleton-title {
+    @apply h-6 w-1/2 skeleton;
+  }
+
+  .skeleton-card {
+    @apply h-32 skeleton rounded-2xl;
+  }
+
+  .page-container {
+    @apply max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8;
+  }
+
+  .section-title {
+    @apply text-2xl font-display font-bold text-clario-surface-900;
+  }
+
+  .section-subtitle {
+    @apply text-clario-surface-600 mt-1;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .animation-delay-100 {
+    animation-delay: 100ms;
+  }
+
+  .animation-delay-200 {
+    animation-delay: 200ms;
+  }
+
+  .animation-delay-300 {
+    animation-delay: 300ms;
+  }
+
+  .animation-delay-500 {
+    animation-delay: 500ms;
+  }
+}

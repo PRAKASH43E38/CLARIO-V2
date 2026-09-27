@@ -1,0 +1,222 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        clario: {
+          primary: {
+            50: '#F2FDE7',
+            100: '#E5F9D0',
+            200: '#D7FFB8',
+            300: '#A8E77B',
+            500: '#58CC02',
+            600: '#4FB800',
+            700: '#46A302',
+            800: '#3F8A00',
+            900: '#2F6800',
+          },
+          secondary: {
+            50: '#EAF8FF',
+            100: '#DDF4FF',
+            500: '#1CB0F6',
+            600: '#1597D0',
+            700: '#137DAA',
+            800: '#11678C',
+          },
+          success: {
+            50: '#F2FDE7',
+            100: '#E5F9D0',
+            200: '#D7FFB8',
+            400: '#7BE11F',
+            500: '#58CC02',
+            600: '#4FB800',
+            700: '#46A302',
+            800: '#3F8A00',
+          },
+          warning: {
+            50: '#FFF8E8',
+            100: '#FFF1DA',
+            200: '#FFE1A3',
+            500: '#FF9600',
+            600: '#E08600',
+            700: '#BB7000',
+            800: '#8F5500',
+          },
+          attention: {
+            50: '#FFF0F0',
+            100: '#FFE0E0',
+            200: '#FFC0C0',
+            400: '#FF7070',
+            500: '#FF4B4B',
+            600: '#E03E3E',
+            700: '#C93232',
+            800: '#9F2525',
+          },
+          surface: {
+            50: '#F7F7F7',
+            100: '#F2F2F2',
+            200: '#E5E5E5',
+            300: '#D4D4D4',
+            400: '#AFAFAF',
+            500: '#737373',
+            600: '#5F5F5F',
+            700: '#3C3C3C',
+            900: '#242424',
+          },
+          green: {
+            DEFAULT: '#58CC02',
+            hi: '#7BE11F',
+            sh: '#46A302',
+            deep: '#3F8A00',
+            t: '#D7FFB8',
+            bg: '#F2FDE7',
+          },
+          blue: {
+            DEFAULT: '#1CB0F6',
+            sh: '#1899D6',
+            t: '#DDF4FF',
+          },
+          purple: {
+            DEFAULT: '#CE82FF',
+            sh: '#A560CC',
+            t: '#F4E6FF',
+          },
+          orange: {
+            DEFAULT: '#FF9600',
+            sh: '#E08600',
+            t: '#FFF1DA',
+          },
+          red: {
+            DEFAULT: '#FF4B4B',
+            sh: '#E03E3E',
+            t: '#FFE0E0',
+          },
+          yellow: {
+            DEFAULT: '#FFC800',
+            sh: '#E0A800',
+            t: '#FFF5CC',
+          },
+          teal: {
+            DEFAULT: '#00CD9C',
+            sh: '#00A87F',
+            t: '#D6FBF1',
+          },
+          ink: {
+            DEFAULT: '#3C3C3C',
+            2: '#737373',
+            3: '#AFAFAF',
+          },
+          line: {
+            DEFAULT: '#E5E5E5',
+            2: '#F2F2F2',
+          },
+          bg: {
+            DEFAULT: '#ffffff',
+            2: '#F7F7F7',
+            50: '#FCFDFB',
+          },
+        }
+      },
+      fontFamily: {
+        sans: ['Nunito', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'system-ui', 'sans-serif'],
+        display: ['Plus Jakarta Sans', 'Nunito', 'sans-serif'],
+      },
+      animation: {
+        'fade-in': 'fadeIn 0.3s ease-out',
+        'slide-up': 'slideUp 0.4s cubic-bezier(0.2, 0.9, 0.2, 1) both',
+        'slide-down': 'slideDown 0.3s ease-out',
+        'scale-in': 'scaleIn 0.2s ease-out',
+        'pulse-soft': 'pulseSoft 2s infinite',
+        'progress-fill': 'progressFill 1s ease-out forwards',
+        'bounce-in': 'bounceIn 0.5s ease-out',
+        'shake': 'shake 0.4s ease-in-out',
+        'celebrate': 'celebrate 0.8s ease-out',
+        'floaty': 'floaty 4.5s ease-in-out infinite',
+        'aura-pulse': 'auraPulse 2.8s ease-in-out infinite',
+        'avatar-bob': 'avatarBob 3.4s ease-in-out infinite',
+        'badge-in': 'badgeIn 0.7s cubic-bezier(0.2, 1.6, 0.5, 1)',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        slideUp: {
+          '0%': { opacity: '0', transform: 'translateY(16px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        slideDown: {
+          '0%': { opacity: '0', transform: 'translateY(-16px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        scaleIn: {
+          '0%': { opacity: '0', transform: 'scale(0.95)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        pulseSoft: {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.6' },
+        },
+        progressFill: {
+          '0%': { width: '0%' },
+          '100%': { width: 'var(--progress-width)' },
+        },
+        bounceIn: {
+          '0%': { opacity: '0', transform: 'scale(0.8)' },
+          '50%': { transform: 'scale(1.05)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        shake: {
+          '0%, 100%': { transform: 'translateX(0)' },
+          '25%': { transform: 'translateX(-8px)' },
+          '75%': { transform: 'translateX(8px)' },
+        },
+        celebrate: {
+          '0%': { transform: 'scale(1)', opacity: '1' },
+          '50%': { transform: 'scale(1.15)', opacity: '1' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
+        },
+        floaty: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-9px)' },
+        },
+        auraPulse: {
+          '0%, 100%': { transform: 'scale(1)', opacity: '0.12' },
+          '50%': { transform: 'scale(1.15)', opacity: '0.25' },
+        },
+        avatarBob: {
+          '0%, 100%': { transform: 'translateY(0) rotate(-2deg)' },
+          '50%': { transform: 'translateY(-4px) rotate(2deg)' },
+        },
+        badgeIn: {
+          '0%': { transform: 'scale(0) rotate(-90deg)' },
+          '70%': { transform: 'scale(1.14) rotate(8deg)' },
+          '100%': { transform: 'scale(1) rotate(0deg)' },
+        },
+      },
+      boxShadow: {
+        soft: '0 2px 8px rgb(15 23 42 / 0.08)',
+        card: '0 4px 12px rgb(15 23 42 / 0.1)',
+        elevated: '0 12px 32px rgb(15 23 42 / 0.14)',
+        'clario-btn-green': '0 4px 0 #46A302',
+        'clario-btn-blue': '0 4px 0 #1899D6',
+        'clario-btn-purple': '0 4px 0 #A560CC',
+        'clario-btn-orange': '0 4px 0 #E08600',
+        'clario-btn-red': '0 4px 0 #E03E3E',
+        'clario-btn-line': '0 4px 0 #E5E5E5',
+      },
+      borderRadius: {
+        'clario-sm': '12px',
+        'clario-md': '16px',
+        'clario-lg': '20px',
+        'clario-xl': '24px',
+        'clario-2xl': '28px',
+      },
+    },
+  },
+  plugins: [],
+}

@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS cala_plans (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL UNIQUE,
+    plan_json TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES learning_sessions(id) ON DELETE CASCADE
+);
