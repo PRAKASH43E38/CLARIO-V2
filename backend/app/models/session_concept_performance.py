@@ -30,6 +30,15 @@ class SessionConceptPerformanceRecord(Base):
             name="ck_session_concept_performance_difficulty",
         ),
         CheckConstraint(
+            "strength IN ('strong', 'moderate', 'weak', 'insufficient_evidence')",
+            name="ck_session_concept_performance_strength",
+        ),
+        CheckConstraint(
+            "weakness IN ('none', 'conceptual', 'reasoning', 'practical', "
+            "'recall', 'mixed', 'insufficient_evidence')",
+            name="ck_session_concept_performance_weakness",
+        ),
+        CheckConstraint(
             "evaluation_confidence >= 0 AND evaluation_confidence <= 1",
             name="ck_session_concept_performance_confidence",
         ),
@@ -74,10 +83,12 @@ class SessionConceptPerformanceRecord(Base):
         nullable=False,
     )
     created_at = Column(
-        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
     )
     updated_at = Column(
-        DateTime,
+        DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,

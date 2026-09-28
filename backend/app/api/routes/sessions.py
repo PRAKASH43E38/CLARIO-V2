@@ -14,6 +14,7 @@ from backend.app.models.repositories import (
 from backend.app.orchestrator.nova import NovaOrchestrator
 from backend.app.orchestrator.state import ActiveSessionContext, LearningStep
 from backend.app.ai.factory import get_ai_provider
+from backend.app.orchestrator.langgraph_orchestrator import ClarioGraph
 
 router = APIRouter(prefix="/api/v1", tags=["sessions"])
 
@@ -106,7 +107,10 @@ async def start_session(request: SessionCreateRequest, user_id: str, db: Session
     )
 
 
+# Removed duplicate orchestration route to avoid conflicts with orchestration.py
+
 @router.get("/session/{session_id}/state", response_model=SessionStateResponse, responses={404: {"model": ErrorResponse}})
+
 async def get_session_state(session_id: str, db: Session = Depends(get_db)):
     sess = SessionRepository.get_session(db, session_id)
     if not sess:

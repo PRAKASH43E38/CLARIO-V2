@@ -49,7 +49,7 @@ export function RoadmapPage() {
         <EmptyState
           title="No learning path yet"
           message="Complete onboarding to generate your personalized roadmap"
-          action={{ label: 'Start Onboarding', onClick: () => window.location.href = '/onboarding' }}
+          action={{ label: 'Start Onboarding', onClick: () => window.location.href = '/learn/new' }}
         />
       </div>
     );
@@ -73,6 +73,51 @@ export function RoadmapPage() {
             <Badge variant="success" size="lg">{masteredCount}/{totalCount} Mastered</Badge>
           </div>
         </div>
+
+        {roadmap.levels.length > 0 && (
+          <section aria-label="Level progression" className="mb-6">
+            <h2 className="mb-3 text-lg font-bold text-clario-surface-900">
+              Multi-level roadmap
+            </h2>
+            <div className="grid gap-3">
+              {roadmap.levels.map(level => (
+                <Card
+                  key={level.level_id}
+                  padding="md"
+                  className={cn(
+                    level.level_id === roadmap.current_level_id
+                      ? 'border-clario-primary-300 bg-clario-primary-50'
+                      : level.is_unlocked
+                        ? 'border-clario-success-200'
+                        : 'opacity-70',
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide text-clario-surface-500">
+                        Level {level.order}
+                        {level.level_id === roadmap.current_level_id ? ' · Current' : ''}
+                      </p>
+                      <h3 className="font-black text-clario-surface-900">{level.title}</h3>
+                      <p className="mt-1 text-sm text-clario-surface-600">{level.description}</p>
+                    </div>
+                    <Badge
+                      variant={
+                        level.completion_state === 'completed'
+                          ? 'success'
+                          : level.is_unlocked
+                            ? 'blue'
+                            : 'neutral'
+                      }
+                    >
+                      {level.level_state.replace('LEVEL_', '').replace(/_/g, ' ')}
+                    </Badge>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Progress Overview */}
         <Card padding="lg" className="bg-gradient-to-br from-clario-primary-50 to-clario-secondary-50 border-clario-primary-100">

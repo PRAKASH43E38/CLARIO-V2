@@ -32,9 +32,12 @@ import type {
   ElaraEvaluation,
   ClarioAdaptiveDecision,
   SessionConceptPerformance,
+  AdaptiveExecutionResult,
+  CalaLevelProgressionResult,
 } from '../types';
 
-const API_BASE = '/api/v1';
+const API_ORIGIN = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
+const API_BASE = `${API_ORIGIN}/api/v1`;
 
 class ApiClient {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -80,22 +83,22 @@ class ApiClient {
   }
 
   async getUserProfile(userId: string): Promise<UserProfileResponse> {
-    return this.request<UserProfileResponse>(`/profile?user_id=${encodeURIComponent(userId)}`);
+    return this.request<UserProfileResponse>(`/learner/profile?user_id=${encodeURIComponent(userId)}`);
   }
 
   async saveUserProfile(userId: string, data: UserProfileRequest): Promise<UserProfileResponse> {
-    return this.request<UserProfileResponse>(`/profile?user_id=${encodeURIComponent(userId)}`, {
+    return this.request<UserProfileResponse>(`/learner/profile?user_id=${encodeURIComponent(userId)}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
   async getMindProfile(userId: string): Promise<MindProfileResponse> {
-    return this.request<MindProfileResponse>(`/mind-profile?user_id=${encodeURIComponent(userId)}`);
+    return this.request<MindProfileResponse>(`/learner/mind-profile?user_id=${encodeURIComponent(userId)}`);
   }
 
   async saveMindProfile(userId: string, data: MindProfileRequest): Promise<MindProfileResponse> {
-    return this.request<MindProfileResponse>(`/mind-profile?user_id=${encodeURIComponent(userId)}`, {
+    return this.request<MindProfileResponse>(`/learner/mind-profile?user_id=${encodeURIComponent(userId)}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
@@ -255,6 +258,46 @@ class ApiClient {
     );
   }
 
+  async executeOrchestrationDecision(
+    userId: string,
+    sessionId: string,
+  ): Promise<AdaptiveExecutionResult> {
+    return this.request<AdaptiveExecutionResult>(
+      `/sessions/${encodeURIComponent(sessionId)}/orchestration/decision/execute?user_id=${encodeURIComponent(userId)}`,
+      { method: 'POST' },
+    );
+  }
+
+  async advanceOrchestrationProgression(
+    userId: string,
+    sessionId: string,
+  ): Promise<CalaLevelProgressionResult> {
+    return this.request<CalaLevelProgressionResult>(
+      `/sessions/${encodeURIComponent(sessionId)}/orchestration/progression?user_id=${encodeURIComponent(userId)}`,
+      { method: 'POST' },
+    );
+  }
+
+  async enterLearningLevel(
+    userId: string,
+    sessionId: string,
+    levelId: string,
+  ): Promise<CalaResult> {
+    return this.request<CalaResult>(
+      `/sessions/${encodeURIComponent(sessionId)}/levels/${encodeURIComponent(levelId)}/enter?user_id=${encodeURIComponent(userId)}`,
+      { method: 'POST' },
+    );
+  }
+
+  async getAdaptiveExecution(
+    userId: string,
+    sessionId: string,
+  ): Promise<AdaptiveExecutionResult> {
+    return this.request<AdaptiveExecutionResult>(
+      `/sessions/${encodeURIComponent(sessionId)}/orchestration/remediation?user_id=${encodeURIComponent(userId)}`,
+    );
+  }
+
   async getDecision(userId: string, sessionId: string): Promise<ClarioAdaptiveDecision> {
     return this.request<ClarioAdaptiveDecision>(
       `/sessions/${encodeURIComponent(sessionId)}/decision?user_id=${encodeURIComponent(userId)}`,
@@ -276,14 +319,14 @@ class ApiClient {
 
   // Learning Flow
   async submitThinking(data: ThinkingSubmitRequest): Promise<ThinkingSubmitResponse> {
-    return this.request<ThinkingSubmitResponse>('/thinking/submit', {
+    return this.request<ThinkingSubmitResponse>('/submissions/thinking', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   async submitPractical(data: PracticalSubmitRequest): Promise<QuizGenerateResponse> {
-    return this.request<QuizGenerateResponse>('/practical/submit', {
+    return this.request<QuizGenerateResponse>('/submissions/practical', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -331,13 +374,16 @@ class ApiClient {
     };
   }
 
-  // Dashboard & Roadmap
-  async getDashboard(userId: string): Promise<DashboardResponse> {
-    return this.request<DashboardResponse>(`/dashboard?user_id=${encodeURIComponent(userId)}`);
+  async getReport(sessionId: string): Promise<any> {
+    return this.request<any>(`/reports/summary/${encodeURIComponent(sessionId)}`);
   }
 
   async getRoadmap(userId: string): Promise<RoadmapResponse> {
     return this.request<RoadmapResponse>(`/roadmap?user_id=${encodeURIComponent(userId)}`);
+  }
+
+  async getDashboard(userId: string): Promise<DashboardResponse> {
+    return this.request<DashboardResponse>(`/dashboard?user_id=${encodeURIComponent(userId)}`);
   }
 }
 

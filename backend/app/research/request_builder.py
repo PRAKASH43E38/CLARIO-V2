@@ -3,11 +3,12 @@ from backend.app.schemas.research import ResearchConcept, ResearchRequest, Resea
 
 
 def research_request_from_cala(plan: CalaResult) -> ResearchRequest:
+    current_level_id = plan.current_level_id or plan.recommended_starting_level
     level = next(
         (
             roadmap_level
             for roadmap_level in plan.roadmap
-            if roadmap_level.level_id == plan.recommended_starting_level
+            if roadmap_level.level_id == current_level_id
             and roadmap_level.is_unlocked
         ),
         None,
@@ -16,7 +17,15 @@ def research_request_from_cala(plan: CalaResult) -> ResearchRequest:
         raise ValueError("CALA plan has no unlocked starting-level topic.")
     topic = level.topics[0]
     if not topic.concepts:
-        raise ValueError("CALA starting topic has no concepts to research.")
+        raise ValueError("CALA active level topic has no concepts to research.")
+    concept = next(
+        (
+            item
+            for item in topic.concepts
+            if item.concept_id == plan.active_concept_id
+        ),
+        topic.concepts[0],
+    )
 
     return ResearchRequest(
         session_id=plan.session_id,
@@ -26,6 +35,8 @@ def research_request_from_cala(plan: CalaResult) -> ResearchRequest:
         interest=plan.interest,
         learner_level=plan.learner_level,
         recommended_starting_level=plan.recommended_starting_level,
+        current_level_id=level.level_id,
+        current_level_title=level.title,
         current_topic=ResearchTopicContext(
             topic_id=topic.topic_id,
             title=topic.title,
@@ -35,12 +46,12 @@ def research_request_from_cala(plan: CalaResult) -> ResearchRequest:
                     title=concept.title,
                     description=concept.description,
                 )
-                for concept in topic.concepts
             ],
         ),
         research_objective=(
             f"Find learning resources that support the learner's goal to "
             f"{plan.learning_goal} and task: {plan.task}. Focus on the "
-            f"Level {level.order} topic and concepts."
+            f"Level {level.order} ({level.title}), topic {topic.title}, and "
+            f"concept {concept.title}."
         ),
     )

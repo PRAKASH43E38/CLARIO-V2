@@ -1,0 +1,53 @@
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field
+from typing import Optional
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Force load .env from root or backend folder to ensure TAVILY_API_KEY is found
+# Look in current directory, then one level up
+env_paths = [
+    Path(".env"),
+    Path("..") / ".env",
+    Path(os.getcwd()) / ".env",
+    Path(os.getcwd()).parent / ".env"
+]
+
+for path in env_paths:
+    if path.exists():
+        load_dotenv(dotenv_path=path)
+        break
+
+class Settings(BaseSettings):
+    PROJECT_NAME: str = "CLARIO"
+    DATABASE_URL: str = Field(default="sqlite:///./clario.db", repr=False)
+    ENVIRONMENT: str = "development"
+    PORT: int = 8000
+    CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
+
+    # AI Provider Settings
+    AI_PROVIDER: str = "mock"
+    AI_MODEL: Optional[str] = None
+
+    # Provider API Keys (optional in environment)
+    GEMINI_API_KEY: Optional[str] = None
+    OPENROUTER_API_KEY: Optional[str] = None
+    MISTRAL_API_KEY: Optional[str] = None
+    TAVILY_API_KEY: Optional[str] = None
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        extra="ignore",
+        env_ignore_empty=True,
+    )
+
+    @property
+    def allowed_origins(self) -> list[str]:
+        return [
+            origin.strip()
+            for origin in self.CORS_ORIGINS.split(",")
+            if origin.strip()
+        ]
+
+settings = Settings()

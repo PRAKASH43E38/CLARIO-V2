@@ -28,6 +28,7 @@ from backend.app.models.repositories import (
     QuizResultRepository,
     ElaraEvaluationRepository,
     AdaptiveDecisionRepository,
+    AdaptiveExecutionRepository,
     SessionConceptPerformanceRepository,
     UserRepository,
 )
@@ -317,6 +318,82 @@ class MockElaraProvider:
         raise AssertionError("Elara must request structured output.")
 
 
+class AdaptiveCycleProvider:
+    def __init__(self, fail_on=None):
+        self.calls = []
+        self.fail_on = fail_on
+
+    def generate_structured(
+        self, prompt, response_model, system_instruction=None, temperature=0.2
+    ):
+        name = response_model.__name__
+        self.calls.append(name)
+        if self.fail_on == name:
+            raise RuntimeError("adaptive worker unavailable")
+        if name == "MiraGeneratedTeaching":
+            task = json.loads(prompt.partition("Teaching task:\n")[2].split(
+                "\n\nThis is a remediation attempt.", 1
+            )[0])
+            sources = task["shared_research_package"]["selected_sources"]
+            return MiraGeneratedTeaching(
+                concept=task["current_concept"]["title"],
+                explanation="A contrasting worked example shows how each split changes uncertainty.",
+                key_points=["Compare outcomes before choosing a split."],
+                examples=["Compare two match features using separate outcome groups."],
+                learner_level=task["current_level"],
+                teaching_style="contrastive worked example",
+                source_reference_ids=[sources[0]["source_id"]],
+            )
+        if name == "AyanGeneratedThinking":
+            task = json.loads(prompt.partition("Critical-thinking task:\n")[2])
+            references = task["research_source_references"]
+            return AyanGeneratedThinking(
+                concept=task["concept"],
+                thinking_prompt="How would you compare the two new candidate splits?",
+                expected_reasoning_focus=["Compare the resulting uncertainty."],
+                difficulty=task["current_level"],
+                source_reference_ids=[references[0]["source_id"]],
+            )
+        if name == "KiraGeneratedPractical":
+            task = json.loads(prompt.partition("Kira practical task:\n")[2])
+            sources = task["research_source_ids"]
+            context = task["learner_context"]
+            return KiraGeneratedPractical(
+                scenario="A coach compares two new player statistics before selecting a model feature.",
+                practical_task="Use information gain to compare the candidate splits.",
+                real_world_context=context["interest"],
+                expected_action="Explain which split reduces uncertainty more.",
+                success_criteria=["Compare the candidate outcomes."],
+                difficulty=context["learner_level"],
+                research_source_ids=sources[:1],
+            )
+        if name == "ZaynGeneratedQuiz":
+            task = json.loads(prompt.partition("Zayn quiz task:\n")[2])
+            attempt = (len(task["previous_question_ids"]) // 5) + 2
+            questions = []
+            for index in range(task["question_count"]):
+                correct = f"Compare candidate split {index + 1}"
+                questions.append({
+                    "question_id": f"q_attempt_{attempt}_{index + 1}",
+                    "question": (
+                        f"New application attempt {attempt}: how should you compare "
+                        f"split candidate {index + 1}?"
+                    ),
+                    "options": [correct, "Ignore the outcomes", "Choose randomly"],
+                    "correct_answer": correct,
+                    "explanation": "Comparing outcome uncertainty identifies the useful split.",
+                    "difficulty": task["difficulty"],
+                    "concept_id": task["concept_id"],
+                })
+            return ZaynGeneratedQuiz(
+                questions=questions, difficulty=task["difficulty"]
+            )
+        raise AssertionError(f"Unexpected structured response model: {name}")
+
+    def generate_text(self, prompt, system_instruction=None, temperature=0.7):
+        raise AssertionError("Adaptive learning workers must request structured output.")
+
+
 def _prepare_research_ready(client, user, session):
     _create_plan(client, user, session)
     initialized = client.post(
@@ -418,7 +495,7 @@ def _prepare_evaluation_ready(
     return response.json()
 
 
-def test_initialize_requires_plan_and_returns_cala_ready_context(orchestration_client):
+def test_initialize_requires_plan_and_enters_unlocked_starting_level(orchestration_client):
     client, db = orchestration_client
     user, session = _create_session(db)
 
@@ -438,8 +515,8 @@ def test_initialize_requires_plan_and_returns_cala_ready_context(orchestration_c
     assert state["cala_plan_id"] == CalaPlanRepository.get_by_session_id(
         db, session.id
     ).id
-    assert state["current_state"] == "CALA_READY"
-    assert state["current_step"] == "cala_plan_loaded"
+    assert state["current_state"] == "LEVEL_ENTERED"
+    assert state["current_step"] == "level_entered"
     assert state["research_package_id"] is None
 
 
@@ -499,7 +576,7 @@ def test_orchestrator_dispatches_nova_and_persists_research_ready_context(
 
     assert response.status_code == 200
     state = response.json()
-    assert initialized.json()["current_state"] == "CALA_READY"
+    assert initialized.json()["current_state"] == "LEVEL_ENTERED"
     assert state["current_state"] == "RESEARCH_READY"
     assert state["current_step"] == "shared_research_package_received"
     assert state["cala_plan_id"] == CalaPlanRepository.get_by_session_id(
@@ -1938,7 +2015,7 @@ def test_clario_decision_completes_only_fully_mastered_mapped_level(
     stored_plan = CalaPlanRepository.get_by_session_id(db, session.id)
     plan = json.loads(stored_plan.plan_json)
     assert plan["roadmap"][0]["completion_state"] == "completed"
-    assert plan["roadmap"][1]["is_unlocked"] is False
+    assert len(plan["roadmap"]) == 1
     assert all(
         concept["concept_id"] == response.json()["concept_id"]
         for topic in plan["roadmap"][0]["topics"]
@@ -1997,3 +2074,358 @@ def test_clario_decision_persistence_failure_sets_decision_failed(
     assert SessionConceptPerformanceRepository.list_by_session_id(
         db, session.id
     ) == []
+
+
+def _persist_decision_for_execution(
+    client, db, user, session, provider, correct_count=3, difficulty="EASY"
+):
+    _prepare_evaluation_ready(
+        client,
+        db,
+        user,
+        session,
+        provider=provider,
+        correct_count=correct_count,
+        difficulty=difficulty,
+    )
+    return client.post(
+        f"/api/v1/sessions/{session.id}/orchestration/decide?user_id={user.id}"
+    )
+
+
+@pytest.mark.parametrize(
+    ("signal", "expected_decision", "expected_difficulty"),
+    [
+        ("decrease", "REDUCE_DIFFICULTY", "EASY"),
+        ("maintain", "RETEACH", "MEDIUM"),
+    ],
+)
+def test_reteach_executes_all_workers_and_redecides_same_concept(
+    orchestration_client, signal, expected_decision, expected_difficulty
+):
+    client, db = orchestration_client
+    user, session = _create_session(db)
+    sibling = CurriculumRepository.create_concept(
+        db, session.topic_id, "Tree Splits", description="Choose a split."
+    )
+    decision_response = _persist_decision_for_execution(
+        client,
+        db,
+        user,
+        session,
+        MockElaraProvider(
+            strength="weak",
+            weakness="conceptual",
+            confidence=0.9,
+            signal=signal,
+        ),
+        difficulty="MEDIUM",
+    )
+    assert decision_response.status_code == 200
+    decision = decision_response.json()
+    assert decision["decision"] == expected_decision
+    previous_teaching = TeachingResultRepository.get_by_session_id(db, session.id)
+    target_performance = SessionConceptPerformanceRepository.get_by_session_and_concept(
+        db, session.id, decision["concept_id"]
+    )
+    sibling_performance = SessionConceptPerformanceRecord(
+        session_id=session.id,
+        orchestration_id=OrchestrationRepository.get_by_session_id(db, session.id).id,
+        concept_id=sibling.id,
+        concept_name=sibling.title,
+        current_difficulty="HARD",
+        mastery_status="mastered",
+        strength="strong",
+        weakness="none",
+        evaluation_confidence=0.95,
+        quiz_accuracy=100,
+        attempt_count=3,
+        remediation_count=0,
+        last_evaluation_id=target_performance.last_evaluation_id,
+    )
+    db.add(sibling_performance)
+    db.commit()
+
+    provider = AdaptiveCycleProvider()
+    app.dependency_overrides[get_teaching_ai_provider] = lambda: provider
+    path = f"/api/v1/sessions/{session.id}"
+    first = client.post(f"{path}/orchestration/decision/execute?user_id={user.id}")
+    repeated = client.post(f"{path}/orchestration/decision/execute?user_id={user.id}")
+
+    assert first.status_code == repeated.status_code == 200
+    result = first.json()
+    assert result["status"] == "AWAITING_SUBMISSION"
+    assert result["session_id"] == session.id
+    assert result["decision_type"] == expected_decision
+    assert result["remediation_context"]["concept_id"] == decision["concept_id"]
+    assert result["remediation_context"]["new_difficulty"] == expected_difficulty
+    assert result["quiz"]["attempt_number"] == 2
+    assert repeated.json() == result
+    assert provider.calls == [
+        "MiraGeneratedTeaching",
+        "AyanGeneratedThinking",
+        "KiraGeneratedPractical",
+        "ZaynGeneratedQuiz",
+    ]
+    reteaching = TeachingResultRepository.get_by_session_and_attempt(
+        db, session.id, 2
+    )
+    previous_teaching_output = json.loads(previous_teaching.response_json)
+    reteaching_output = json.loads(reteaching.response_json)
+    assert reteaching.concept.casefold() == target_performance.concept_name.casefold()
+    assert reteaching_output["explanation"] != previous_teaching_output["explanation"]
+    assert reteaching_output["examples"] != previous_teaching_output["examples"]
+    assert ThinkingResultRepository.get_by_session_and_attempt(
+        db, session.id, 2
+    ) is not None
+    assert PracticalResultRepository.get_by_session_and_attempt(
+        db, session.id, 2
+    ).concept_id == decision["concept_id"]
+    old_quiz, new_quiz = QuizResultRepository.list_by_session_id(db, session.id)
+    assert old_quiz.id != new_quiz.id
+    assert old_quiz.questions_json != new_quiz.questions_json
+    assert old_quiz.answer_key_json != new_quiz.answer_key_json
+    untouched = SessionConceptPerformanceRepository.get_by_session_and_concept(
+        db, session.id, sibling.id
+    )
+    assert untouched.mastery_status == "mastered"
+    assert untouched.current_difficulty == "HARD"
+    assert untouched.attempt_count == 3
+    assert target_performance.current_difficulty == expected_difficulty
+
+    answer_key = json.loads(new_quiz.answer_key_json)
+    answers = {
+        question["question_id"]: answer_key[question["question_id"]]["correct_answer"]
+        for question in json.loads(new_quiz.questions_json)
+    }
+    submitted = client.post(
+        f"{path}/quiz/submit?user_id={user.id}",
+        json={"quiz_id": new_quiz.id, "answers": answers},
+    )
+    assert submitted.status_code == 200
+    app.dependency_overrides[get_teaching_ai_provider] = lambda: MockElaraProvider(
+        strength="strong", weakness="none", confidence=0.9, signal="maintain"
+    )
+    evaluated = client.post(
+        f"{path}/orchestration/evaluate?user_id={user.id}"
+    )
+    assert evaluated.status_code == 200
+    assert evaluated.json()["concept_id"] == decision["concept_id"]
+    assert evaluated.json()["quiz_performance"]["quiz_result_id"] == new_quiz.id
+    next_decision = client.post(
+        f"{path}/orchestration/decide?user_id={user.id}"
+    )
+    assert next_decision.status_code == 200
+    assert next_decision.json()["evaluation_reference"] != decision["evaluation_reference"]
+
+
+def test_retest_generates_distinct_private_quiz_and_can_be_evaluated_again(
+    orchestration_client,
+):
+    client, db = orchestration_client
+    user, session = _create_session(db)
+    decision_response = _persist_decision_for_execution(
+        client,
+        db,
+        user,
+        session,
+        MockElaraProvider(
+            strength="insufficient_evidence",
+            weakness="insufficient_evidence",
+            confidence=0.2,
+            signal="insufficient_evidence",
+        ),
+        correct_count=0,
+    )
+    assert decision_response.status_code == 200
+    assert decision_response.json()["decision"] == "RETEST"
+    initial_quiz = QuizResultRepository.get_by_session_id(db, session.id)
+    original_questions = initial_quiz.questions_json
+    original_answer_key = initial_quiz.answer_key_json
+    provider = AdaptiveCycleProvider()
+    app.dependency_overrides[get_teaching_ai_provider] = lambda: provider
+    path = f"/api/v1/sessions/{session.id}"
+
+    execution = client.post(
+        f"{path}/orchestration/decision/execute?user_id={user.id}"
+    )
+
+    assert execution.status_code == 200
+    result = execution.json()
+    assert result["status"] == "AWAITING_SUBMISSION"
+    assert provider.calls == ["ZaynGeneratedQuiz"]
+    assert result["quiz"]["concept_id"] == initial_quiz.concept_id
+    assert result["quiz"]["attempt_number"] == 2
+    assert {q["question_id"] for q in result["quiz"]["questions"]}.isdisjoint(
+        {q["question_id"] for q in json.loads(original_questions)}
+    )
+    assert {q["question"] for q in result["quiz"]["questions"]}.isdisjoint(
+        {q["question"] for q in json.loads(original_questions)}
+    )
+    assert "answer_key" not in json.dumps(result)
+    assert "correctness" not in json.dumps(result)
+    assert initial_quiz.questions_json == original_questions
+    assert initial_quiz.answer_key_json == original_answer_key
+    assert QuizResultRepository.list_by_session_id(db, session.id)[0].id == initial_quiz.id
+    assert client.post(
+        f"{path}/orchestration/decision/execute?user_id={user.id}"
+    ).json() == result
+    assert provider.calls == ["ZaynGeneratedQuiz"]
+
+    new_quiz = QuizResultRepository.get_by_session_and_attempt(db, session.id, 2)
+    answers = {question["question_id"]: question["options"][1] for question in result["quiz"]["questions"]}
+    assert client.post(
+        f"{path}/quiz/submit?user_id={user.id}",
+        json={"quiz_id": new_quiz.id, "answers": answers},
+    ).status_code == 200
+    app.dependency_overrides[get_teaching_ai_provider] = lambda: MockElaraProvider(
+        strength="insufficient_evidence",
+        weakness="insufficient_evidence",
+        confidence=0.2,
+        signal="insufficient_evidence",
+    )
+    reevaluation = client.post(
+        f"{path}/orchestration/evaluate?user_id={user.id}"
+    )
+    assert reevaluation.status_code == 200, reevaluation.text
+    next_decision = client.post(
+        f"{path}/orchestration/decide?user_id={user.id}"
+    )
+    assert next_decision.status_code == 200
+    assert next_decision.json()["decision"] == "RETEST"
+    assert next_decision.json()["concept_id"] == result["concept_id"]
+
+
+def test_execution_failure_is_persisted_and_retryable(
+    orchestration_client,
+):
+    client, db = orchestration_client
+    user, session = _create_session(db)
+    _persist_decision_for_execution(
+        client,
+        db,
+        user,
+        session,
+        MockElaraProvider(strength="weak", weakness="conceptual", signal="maintain"),
+    )
+    provider = AdaptiveCycleProvider(fail_on="MiraGeneratedTeaching")
+    app.dependency_overrides[get_teaching_ai_provider] = lambda: provider
+    path = f"/api/v1/sessions/{session.id}"
+
+    failed = client.post(
+        f"{path}/orchestration/decision/execute?user_id={user.id}"
+    )
+
+    assert failed.status_code == 502
+    execution = AdaptiveExecutionRepository.get_latest_by_session_id(db, session.id)
+    assert execution.status == "FAILED"
+    assert execution.error_message
+    state = client.get(f"{path}/orchestration?user_id={user.id}").json()
+    assert state["current_state"] == "REMEDIATION_FAILED"
+    provider.fail_on = None
+    retried = client.post(
+        f"{path}/orchestration/decision/execute?user_id={user.id}"
+    )
+    assert retried.status_code == 200
+    assert retried.json()["execution_id"] == execution.id
+    assert retried.json()["status"] == "AWAITING_SUBMISSION"
+    assert AdaptiveExecutionRepository.count_by_session_and_concept(
+        db, session.id, execution.concept_id
+    ) == 1
+
+
+def test_execution_rejects_foreign_owner_and_non_ready_decision(
+    orchestration_client,
+):
+    client, db = orchestration_client
+    user, session = _create_session(db)
+    other, _ = _create_session(db, "execution-owner@example.com")
+    _persist_decision_for_execution(
+        client,
+        db,
+        user,
+        session,
+        MockElaraProvider(strength="weak", weakness="conceptual"),
+    )
+    path = f"/api/v1/sessions/{session.id}"
+    assert client.post(
+        f"{path}/orchestration/decision/execute?user_id={other.id}"
+    ).status_code == 404
+    orchestration = OrchestrationRepository.get_by_session_id(db, session.id)
+    orchestration.current_state = "EVALUATION_READY"
+    db.commit()
+    invalid = client.post(
+        f"{path}/orchestration/decision/execute?user_id={user.id}"
+    )
+    assert invalid.status_code == 409
+    assert AdaptiveExecutionRepository.get_latest_by_session_id(db, session.id) is None
+
+
+def test_remediation_limit_is_explicit_and_never_marks_mastery(
+    orchestration_client, monkeypatch
+):
+    client, db = orchestration_client
+    user, session = _create_session(db)
+    decision = _persist_decision_for_execution(
+        client,
+        db,
+        user,
+        session,
+        MockElaraProvider(strength="weak", weakness="conceptual"),
+    ).json()
+    monkeypatch.setenv("CLARIO_MAX_REMEDIATION_ATTEMPTS", "2")
+    monkeypatch.setattr(
+        AdaptiveExecutionRepository,
+        "count_by_session_and_concept",
+        lambda *args, **kwargs: 2,
+    )
+
+    response = client.post(
+        f"/api/v1/sessions/{session.id}/orchestration/decision/execute?user_id={user.id}"
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "LIMIT_REACHED"
+    assert response.json()["remediation_context"]["concept_id"] == decision["concept_id"]
+    performance = SessionConceptPerformanceRepository.get_by_session_and_concept(
+        db, session.id, decision["concept_id"]
+    )
+    assert performance.mastery_status == "remediating"
+    state = client.get(
+        f"/api/v1/sessions/{session.id}/orchestration?user_id={user.id}"
+    ).json()
+    assert state["current_state"] == "REMEDIATION_LIMIT_REACHED"
+
+
+def test_execution_get_is_session_owned_and_contains_no_private_quiz_data(
+    orchestration_client,
+):
+    client, db = orchestration_client
+    user, session = _create_session(db)
+    _persist_decision_for_execution(
+        client,
+        db,
+        user,
+        session,
+        MockElaraProvider(
+            strength="insufficient_evidence",
+            weakness="insufficient_evidence",
+            signal="insufficient_evidence",
+        ),
+    )
+    app.dependency_overrides[get_teaching_ai_provider] = lambda: AdaptiveCycleProvider()
+    path = f"/api/v1/sessions/{session.id}"
+    assert client.post(
+        f"{path}/orchestration/decision/execute?user_id={user.id}"
+    ).status_code == 200
+
+    retrieved = client.get(f"{path}/orchestration/remediation?user_id={user.id}")
+
+    assert retrieved.status_code == 200
+    assert retrieved.json()["status"] == "AWAITING_SUBMISSION"
+    assert "answer_key" not in json.dumps(retrieved.json())
+    assert "correctness" not in json.dumps(retrieved.json())
+    other, _ = _create_session(db, "other-execution-reader@example.com")
+    assert client.get(
+        f"{path}/orchestration/remediation?user_id={other.id}"
+    ).status_code == 404

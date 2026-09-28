@@ -8,6 +8,7 @@ import type {
   ClarioOrchestrationContext,
   ElaraEvaluation,
   ClarioAdaptiveDecision,
+  AdaptiveExecutionResult,
   SessionInputsRequest,
   ZaynQuizPresentation,
 } from '../types';
@@ -46,6 +47,8 @@ export function OnboardingPage() {
   const [decision, setDecision] = useState<ClarioAdaptiveDecision | null>(null);
   const [decisionError, setDecisionError] = useState<string | null>(null);
   const [isDeciding, setIsDeciding] = useState(false);
+  const [adaptiveExecution, setAdaptiveExecution] = useState<AdaptiveExecutionResult | null>(null);
+  const [unlockedLevelId, setUnlockedLevelId] = useState<string | null>(null);
   const [researchError, setResearchError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -200,6 +203,7 @@ export function OnboardingPage() {
       });
       setQuiz(previous => previous ? { ...previous, status: 'SUBMITTED' } : previous);
       setOrchestration(await api.getOrchestrationState(userId, id));
+      await evaluateAndContinue(id);
     } catch (err) {
       setQuizError(err instanceof Error ? err.message : 'Unable to submit your answers.');
       try {
@@ -236,13 +240,70 @@ export function OnboardingPage() {
       setIsEvaluating(false);
     }
   };
+  const executePersistedDecision = async (id: string) => {
+    const result = await api.executeOrchestrationDecision(userId, id);
+    setAdaptiveExecution(result);
+    setOrchestration(await api.getOrchestrationState(userId, id));
+    if (result.quiz) {
+      setQuiz(result.quiz);
+      setQuizAnswers({});
+      setQuizRemainingSeconds(result.quiz.time_limit_seconds * result.quiz.questions.length);
+      setEvaluation(null);
+      setDecision(null);
+      setEvaluationError(null);
+      setDecisionError(null);
+      setUnlockedLevelId(null);
+    } else if (
+      result.decision_type === 'CONTINUE' ||
+      result.decision_type === 'COMPLETE_LEVEL'
+    ) {
+      const progression = await api.advanceOrchestrationProgression(userId, id);
+      setCalaPlan(progression.plan);
+      const state = await api.getOrchestrationState(userId, id);
+      setOrchestration(state);
+      setDecision(state.adaptive_decision ?? decision);
+      setUnlockedLevelId(
+        progression.action === 'UNLOCK_NEXT_LEVEL'
+          ? progression.next_level_id
+          : null,
+      );
+      if (progression.action === 'CONCEPT_ADVANCED') {
+        await coordinateResearch(id);
+      }
+    } else if (result.decision_type === 'COMPLETE_GOAL') {
+      setCalaPlan(await api.getCalaPlan(userId, id));
+      setUnlockedLevelId(null);
+    }
+  };
+
+  const enterUnlockedLevel = async (id: string, levelId: string) => {
+    setIsDeciding(true);
+    setDecisionError(null);
+    try {
+      const plan = await api.enterLearningLevel(userId, id, levelId);
+      setCalaPlan(plan);
+      setUnlockedLevelId(null);
+      setQuiz(null);
+      setEvaluation(null);
+      setDecision(null);
+      setAdaptiveExecution(null);
+      await coordinateResearch(id);
+    } catch (err) {
+      setDecisionError(
+        err instanceof Error ? err.message : 'Unable to enter the unlocked level.',
+      );
+    } finally {
+      setIsDeciding(false);
+    }
+  };
+
   const requestDecision = async (id: string) => {
     setIsDeciding(true);
     setDecisionError(null);
     try {
       const result = await api.requestOrchestrationDecision(userId, id);
       setDecision(result);
-      setOrchestration(await api.getOrchestrationState(userId, id));
+      await executePersistedDecision(id);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to continue learning.';
       setDecisionError(message);
@@ -253,6 +314,53 @@ export function OnboardingPage() {
           ? stateError.message
           : 'Unable to reload orchestration state.';
         setDecisionError(`${message} ${stateMessage}`);
+      }
+    } finally {
+      setIsDeciding(false);
+    }
+  };
+
+  const retryDecisionExecution = async (id: string) => {
+    setIsDeciding(true);
+    setDecisionError(null);
+    try {
+      await executePersistedDecision(id);
+    } catch (err) {
+      setDecisionError(err instanceof Error ? err.message : 'Unable to prepare the next learning step.');
+    } finally {
+      setIsDeciding(false);
+    }
+  };
+
+  const evaluateAndContinue = async (id: string) => {
+    setIsEvaluating(true);
+    setEvaluationError(null);
+    setDecisionError(null);
+    try {
+      const result = await api.requestOrchestrationEvaluation(userId, id);
+      setEvaluation(result);
+      setOrchestration(await api.getOrchestrationState(userId, id));
+    } catch (err) {
+      setEvaluationError(err instanceof Error ? err.message : 'Unable to evaluate this learning attempt.');
+      return;
+    } finally {
+      setIsEvaluating(false);
+    }
+
+    setIsDeciding(true);
+    try {
+      const result = await api.requestOrchestrationDecision(userId, id);
+      setDecision(result);
+      await executePersistedDecision(id);
+    } catch (err) {
+      setDecisionError(err instanceof Error ? err.message : 'Unable to continue learning.');
+      try {
+        setOrchestration(await api.getOrchestrationState(userId, id));
+      } catch (stateError) {
+        const stateMessage = stateError instanceof Error
+          ? stateError.message
+          : 'Unable to reload orchestration state.';
+        setDecisionError(previous => `${previous ?? 'Unable to continue learning.'} ${stateMessage}`);
       }
     } finally {
       setIsDeciding(false);
@@ -326,7 +434,10 @@ export function OnboardingPage() {
             <Card padding="md" className="border-clario-primary-200 bg-clario-primary-50">
               <p><strong>Initial learner estimate:</strong> <span className="capitalize">{calaPlan.learner_level}</span></p>
               <p className="mt-1 text-sm text-clario-surface-700">{calaPlan.learner_level_reason}</p>
-              <p className="mt-3"><strong>Recommended starting level:</strong> Level 1 · Beginner</p>
+              <p className="mt-3"><strong>Current level:</strong> {
+                calaPlan.roadmap.find(level => level.level_id === calaPlan.current_level_id)?.title
+                ?? calaPlan.roadmap.find(level => level.level_id === calaPlan.recommended_starting_level)?.title
+              }</p>
               <p className="mt-1 text-sm text-clario-surface-700">{calaPlan.recommended_starting_level_reason}</p>
               <p className="mt-3"><strong>Confidence:</strong> {calaPlan.confidence_state.level}</p>
               <p className="mt-1"><strong>Weakness:</strong> {calaPlan.weakness_type}</p>
@@ -341,7 +452,7 @@ export function OnboardingPage() {
                       <p className="mt-1 text-sm text-clario-surface-600">{level.description}</p>
                     </div>
                     <span className={`rounded-full px-3 py-1 text-xs font-bold ${level.is_unlocked ? 'bg-clario-primary-100 text-clario-primary-800' : 'bg-clario-surface-100 text-clario-surface-600'}`}>
-                      {level.is_unlocked ? 'Unlocked' : 'Locked'}
+                      {level.level_state.replace('LEVEL_', '').replace(/_/g, ' ')}
                     </span>
                   </div>
                   {level.topics.map(topic => (
@@ -687,6 +798,32 @@ export function OnboardingPage() {
                       {(decision.decision === 'REDUCE_DIFFICULTY' || decision.decision === 'INCREASE_DIFFICULTY') && (
                         <p className="mt-2 text-sm text-clario-surface-600">Next attempt difficulty: {decision.next_difficulty}</p>
                       )}
+                      {adaptiveExecution?.status === 'LIMIT_REACHED' && (
+                        <p role="alert" className="mt-3 text-sm font-semibold text-clario-attention-700">
+                          This concept has reached the configured remediation-attempt limit. It remains unmastered until new evidence is reviewed.
+                        </p>
+                      )}
+                      {decisionError && (
+                        <div className="mt-4 space-y-2">
+                          <p role="alert" className="rounded-xl bg-clario-attention-50 p-3 text-sm text-clario-attention-700">{decisionError}</p>
+                          <Button type="button" variant="primary" disabled={isDeciding} onClick={() => void retryDecisionExecution(sessionId)}>
+                            {isDeciding ? 'Preparing next step...' : 'Retry next learning step'}
+                          </Button>
+                        </div>
+                      )}
+                      {unlockedLevelId && calaPlan && sessionId && (
+                        <Button
+                          type="button"
+                          variant="primary"
+                          className="mt-4"
+                          disabled={isDeciding}
+                          onClick={() => void enterUnlockedLevel(sessionId, unlockedLevelId)}
+                        >
+                          {isDeciding
+                            ? 'Entering next level...'
+                            : `Enter ${calaPlan.roadmap.find(level => level.level_id === unlockedLevelId)?.title ?? 'next level'}`}
+                        </Button>
+                      )}
                     </Card>
                   )}
                   </div>
@@ -695,12 +832,20 @@ export function OnboardingPage() {
             )}
             {quiz && quiz.status !== 'SUBMITTED' && (
               <Card padding="lg" className="border-clario-primary-200">
+                {adaptiveExecution?.status === 'AWAITING_SUBMISSION' && (
+                  <p className="mb-4 rounded-xl bg-clario-primary-50 p-3 text-sm font-semibold text-clario-primary-800">
+                    {adaptiveExecution.decision_type === 'RETEST'
+                      ? "Let's try a new challenge on this concept."
+                      : "Let's strengthen this concept with a different explanation and a new challenge."}
+                    {' '}Attempt {adaptiveExecution.remediation_context.remediation_attempt}.
+                  </p>
+                )}
                 {quizError && <p role="alert" className="mb-4 rounded-xl bg-clario-attention-50 p-3 text-clario-attention-700">{quizError}</p>}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="font-bold text-clario-primary-600">Zayn · Challenge</p>
                     <h3 className="mt-1 text-xl font-black text-clario-surface-900">
-                      {quiz.difficulty} · {quiz.questions.length} questions
+                      {quiz.difficulty} · {quiz.questions.length} questions · Attempt {quiz.attempt_number}
                     </h3>
                   </div>
                   <p role="timer" aria-live="off" className="rounded-full bg-clario-primary-50 px-4 py-2 font-bold text-clario-primary-800">

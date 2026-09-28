@@ -19,6 +19,6 @@ Downstream workers should receive one validated shared research package rather t
 
 ## Adaptive sequence
 
-`Mira → Ayan → Kira → Zayn → Elara → CLARIO-AI decision` is implemented as explicit handoffs through a persisted current-concept outcome. Ayan returns a reasoning prompt; Kira returns a practical activity; Zayn creates a quiz and privately records correctness on submission; Elara evaluates available evidence. No worker makes workflow decisions. Ayan/Kira learner responses are not captured and Elara marks them unavailable. CLARIO-AI's next action is persisted, but automatic reteaching/retesting is not yet wired.
+`Mira → Ayan → Kira → Zayn → Elara → CLARIO-AI decision` is implemented as explicit handoffs through a persisted current-concept outcome. When that persisted decision selects `RETEACH`/`REDUCE_DIFFICULTY`, CLARIO-AI runs a new concept-specific Mira → Ayan → Kira → Zayn attempt; `RETEST` runs a new Zayn attempt only. Results are persisted by attempt, prior quiz rows remain unchanged, and Zayn rejects repeated question IDs or exact question wording. The submitted attempt returns through Elara and CLARIO-AI. No worker makes workflow decisions. Ayan/Kira learner responses are not captured and Elara marks them unavailable.
 
 For a weak concept, CLARIO-AI directs Mira to explain differently, Kira to offer a different application example, and Zayn to retest. Previously mastered concepts remain mastered.

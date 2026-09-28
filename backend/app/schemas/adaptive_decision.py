@@ -34,6 +34,7 @@ class AdaptiveDecision(BaseModel):
 
     session_id: str
     orchestration_id: str
+    level_id: str | None = None
     concept_id: str
     decision: DecisionAction
     mastery_status: MasteryStatus

@@ -15,6 +15,10 @@ class MindProfile(Base):
     support_when_stuck = Column(String, nullable=False)
     feedback_preference = Column(String, nullable=False)
     challenge_preference = Column(String, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
 
     user = relationship("User", back_populates="mind_profile")

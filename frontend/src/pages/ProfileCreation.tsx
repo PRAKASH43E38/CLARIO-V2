@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Card, Input } from '../components';
 import { useAuth } from '../hooks';
@@ -13,11 +13,14 @@ export function ProfileCreationPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (userId && profileComplete) {
+      navigate('/mind-profile', { replace: true });
+    }
+  }, [userId, profileComplete, navigate]);
+
   if (!userId) return null;
-  if (profileComplete) {
-    navigate('/mind-profile', { replace: true });
-    return null;
-  }
+  if (profileComplete) return null;
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();

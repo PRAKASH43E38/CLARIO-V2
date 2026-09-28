@@ -49,7 +49,9 @@ class ZaynQuizAgent(BaseAgent):
             "the current concept. Use at least two distinct options per question, "
             "with correct_answer exactly matching one option. Each question must "
             "include a short explanation, the exact concept_id and requested "
-            "difficulty. Do not include unrelated concepts. Do not change difficulty.\n\n"
+            "difficulty. Do not include unrelated concepts. Do not change difficulty. "
+            "For a retest, every question must be new: do not reuse any prior question "
+            "ID or question wording listed in the task.\n\n"
             f"Zayn quiz task:\n{json.dumps(task.model_dump(mode='json'), ensure_ascii=True)}"
         )
         try:
@@ -108,6 +110,19 @@ class ZaynQuizAgent(BaseAgent):
                 raise ZaynResponseError(
                     "Zayn returned a question without wording or explanation."
                 )
+        previous_ids = set(task.previous_question_ids)
+        previous_texts = {
+            " ".join(text.casefold().split())
+            for text in task.previous_question_texts
+        }
+        if any(
+            question.question_id in previous_ids
+            or " ".join(question.question.casefold().split()) in previous_texts
+            for question in generated.questions
+        ):
+            raise ZaynResponseError(
+                "Zayn reused a question from an earlier attempt."
+            )
 
         return ZaynOutput(
             agent="Zayn",

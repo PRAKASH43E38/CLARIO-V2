@@ -81,7 +81,7 @@ def test_cala_returns_structured_plan_and_safe_beginner_default():
     assert "available starting level" in result.recommended_starting_level_reason
     assert result.roadmap[0].is_unlocked is True
     assert result.roadmap[0].topics[0].concepts[0].concept_id == "cpt_test"
-    assert [level.is_unlocked for level in result.roadmap] == [True, False, False]
+    assert [level.is_unlocked for level in result.roadmap] == [True]
     assert result.initial_agent_routing[0].agent == "Nova"
     assert all(route.status == "planned" for route in result.initial_agent_routing)
     assert "worked example" in result.initial_agent_routing[1].purpose

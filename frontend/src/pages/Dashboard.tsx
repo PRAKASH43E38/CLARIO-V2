@@ -4,9 +4,9 @@ import { Button, Card, CardContent, Badge, ProgressBar, CircularProgress, XPBadg
 import { useDashboard, useRoadmap } from '../hooks';
 import { useAuth } from '../hooks';
 import { cn } from '../utils/helpers';
-import { 
-  Target, Flame, Trophy, TrendingUp, 
-  PlayCircle, ArrowRight, BookOpen, 
+import {
+  Target, Flame, Trophy, TrendingUp,
+  PlayCircle, ArrowRight, BookOpen,
   Lightbulb, Zap, Award, Brain, CheckCircle
 } from 'lucide-react';
 
@@ -93,109 +93,182 @@ export function DashboardPage() {
   const isRemediating = dashboard.weak_concepts.length > 0;
 
   return (
-    <div className="page-container">
-      {/* Header */}
-      <div className="mb-8 animate-slide-up">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <div>
-            <p className="text-clario-primary-600 font-medium">{getGreeting()}, {dashboard.learner_name}</p>
-            <h1 className="font-display font-bold text-3xl text-clario-surface-900 mt-1">Continue your journey</h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <XPBadge xp={xp} size="md" />
-            <StreakBadge streak={streak} size="md" />
-          </div>
+    <div className="animate-slide-up space-y-8">
+      {/* Header Section */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <p className="text-slate-500 font-bold text-sm uppercase tracking-widest">{getGreeting()}, {dashboard.learner_name}</p>
+          <h1 className="font-display font-black text-4xl text-slate-900 tracking-tight mt-1">Your Journey</h1>
         </div>
-
-        {/* Current Goal */}
-        <Card variant="hover" padding="lg" className="bg-gradient-to-br from-clario-primary-50 to-clario-secondary-50 border-clario-primary-100">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-white/80 backdrop-blur flex items-center justify-center shadow-soft">
-                <Target className="w-8 h-8 text-clario-primary-600" />
-              </div>
-              <div>
-                <p className="text-sm text-clario-primary-700 font-medium">Current Goal</p>
-                <h2 className="font-display font-bold text-xl text-clario-surface-900">{dashboard.current_topic}</h2>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-4 sm:ml-auto">
-              <div className="hidden sm:block text-right">
-                <p className="text-sm text-clario-primary-700">Overall Progress</p>
-                <p className="font-display font-bold text-2xl text-clario-primary-600">{Math.round(overallProgress)}%</p>
-              </div>
-              <CircularProgress value={overallProgress} size={80} strokeWidth={6} variant="primary" showValue={false} />
-            </div>
-          </div>
-        </Card>
-
-        {/* Continue Learning Button */}
-        <Button 
-          variant="primary" 
-          size="lg" 
-          fullWidth 
-          className="mb-8 animate-slide-up animation-delay-100"
-          leftIcon={<PlayCircle className="w-5 h-5" />}
-          onClick={handleContinueLearning}
-          disabled={!userId}
-        >
-          {currentConcept ? (
-            <>
-              New session · Continue: {currentConcept.concept}
-              <ArrowRight className="w-5 h-5" />
-            </>
-          ) : (
-            'Start a new learning session'
-          )}
-        </Button>
+        <div className="flex items-center gap-3">
+          <XPBadge xp={xp} size="md" />
+          <StreakBadge streak={streak} size="md" />
+        </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left Column - Stats & Progress */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Daily Progress */}
-          <Card padding="lg">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="section-title">Today's Progress</h2>
-              <Badge variant="primary">Day {streak} Streak</Badge>
+      {/* Hero Card - Premium Glass Style */}
+      <Card variant="green" padding="lg" className="relative overflow-hidden border-none shadow-xl bg-gradient-to-br from-clario-green to-clario-green-deep text-white">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl" />
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+          <div className="flex items-center gap-5">
+            <div className="w-20 h-20 rounded-3xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner">
+              <Target className="w-10 h-10 text-white" />
             </div>
-            
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="text-center p-4 bg-clario-surface-50 rounded-2xl">
-                <CircularProgress value={Math.min((xp % 1000) / 10, 100)} size={70} strokeWidth={5} variant="primary" />
-                <p className="mt-2 text-sm text-clario-surface-600">XP Today</p>
-                <p className="font-display font-bold text-xl text-clario-surface-900">{xp % 1000} / 1000</p>
+            <div>
+              <p className="text-clario-green-t font-black uppercase tracking-widest text-xs">Current Goal</p>
+              <h2 className="font-display font-black text-3xl tracking-tight">{dashboard.current_topic}</h2>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-6 bg-white/10 backdrop-blur-sm p-4 rounded-2xl border border-white/20">
+            <div className="text-right">
+              <p className="text-clario-green-t text-xs font-black uppercase tracking-widest">Overall Progress</p>
+              <p className="font-display font-black text-3xl">{Math.round(overallProgress)}%</p>
+            </div>
+            <CircularProgress value={overallProgress} size={60} strokeWidth={8} variant="primary" showValue={false} />
+          </div>
+        </div>
+      </Card>
+
+      {/* Primary Action */}
+      <Button
+        variant="primary"
+        size="lg"
+        fullWidth
+        className="py-6 text-xl shadow-clario-btn-green transition-transform hover:scale-[1.01] active:scale-95"
+        leftIcon={<PlayCircle className="w-6 h-6" />}
+        onClick={handleContinueLearning}
+        disabled={!userId}
+      >
+        {currentConcept ? (
+          <>
+            Continue: {currentConcept.concept}
+            <ArrowRight className="w-6 h-6" />
+          </>
+        ) : (
+          'Start a new learning session'
+        )}
+      </Button>
+
+      <div className="grid gap-8 lg:grid-cols-3">
+        {/* Main Progress Area */}
+        <div className="lg:col-span-2 space-y-8">
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[
+              { label: 'XP Today', value: `${xp % 1000} / 1000`, icon: Flame, color: 'orange' },
+              { label: 'Weekly Streak', value: `${streak} / 7 days`, icon: TrendingUp, color: 'blue' },
+              { label: 'Mastered', value: `${masteredCount} / ${totalConcepts}`, icon: Award, color: 'green' },
+            ].map((stat, i) => (
+              <Card key={i} padding="lg" className="text-center hover:shadow-md transition-all">
+                <div className="flex justify-center mb-3">
+                  <div className={`w-12 h-12 rounded-2xl bg-clario-${stat.color}-t flex items-center justify-center text-clario-${stat.color}-600 shadow-soft`}>
+                    <stat.icon className="w-6 h-6" />
+                  </div>
+                </div>
+                <p className="text-slate-500 font-bold text-xs uppercase tracking-wider mb-1">{stat.label}</p>
+                <p className="font-display font-black text-2xl text-slate-900">{stat.value}</p>
+              </Card>
+            ))}
+          </div>
+
+          {/* Concept Mastery - Premium List */}
+          <Card padding="lg" className="border-none shadow-sm bg-white">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="font-display font-black text-xl text-slate-900">Concept Mastery</h2>
+              <Badge variant="primary" size="sm">Your Level</Badge>
+            </div>
+            <div className="space-y-5">
+              {dashboard.concept_breakdown.map((concept, index) => (
+                <div key={concept.concept} className="group animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
+                  <div className="flex items-center justify-between gap-4 mb-2">
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <Badge status={concept.status} size="sm" />
+                      <span className="font-bold text-slate-700 truncate group-hover:text-slate-900 transition-colors">{concept.concept}</span>
+                    </div>
+                    <span className="font-display font-black text-slate-900">{Math.round(concept.mastery_score)}%</span>
+                  </div>
+                  <ProgressBar
+                    value={concept.mastery_score}
+                    max={100}
+                    size="sm"
+                    variant={concept.status === 'mastered' ? 'success' : concept.status === 'remediating' ? 'warning' : 'primary'}
+                  />
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+
+        {/* Right Side - Intelligence & Actions */}
+        <div className="space-y-6">
+          {/* Weak Concepts - Urgent Action */}
+          {dashboard.weak_concepts.length > 0 && (
+            <Card padding="lg" className="bg-orange-50 border-2 border-orange-100 shadow-none">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-orange-200 flex items-center justify-center text-orange-600">
+                  <Zap className="w-4 h-4" />
+                </div>
+                <h2 className="font-display font-black text-orange-800">Needs Practice</h2>
               </div>
-              
-              <div className="text-center p-4 bg-clario-surface-50 rounded-2xl">
-                <CircularProgress value={streak > 7 ? 100 : (streak / 7) * 100} size={70} strokeWidth={5} variant="warning" />
-                <p className="mt-2 text-sm text-clario-surface-600">Weekly Streak</p>
-                <p className="font-display font-bold text-xl text-clario-surface-900">{streak} / 7 days</p>
+              <ul className="space-y-3">
+                {dashboard.weak_concepts.map((concept, i) => (
+                  <li key={concept} className="flex items-center justify-between p-3 bg-white rounded-xl border border-orange-100 shadow-sm animate-slide-up" style={{ animationDelay: `${i * 50}ms` }}>
+                    <span className="font-bold text-slate-700 text-sm">{concept}</span>
+                    <Badge status="remediating" size="sm" />
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
+          {/* AI Recommendation */}
+          <Card padding="lg" className="bg-slate-900 text-white border-none shadow-xl overflow-hidden relative">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-clario-green/20 rounded-full -mr-16 -mt-16 blur-3xl" />
+            <div className="relative z-10">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-clario-green text-white flex items-center justify-center shadow-clario-btn-green">
+                  <Lightbulb className="w-5 h-5" />
+                </div>
+                <h3 className="font-black uppercase tracking-widest text-xs text-slate-400">CLARIO AI Insight</h3>
               </div>
-              
-              <div className="text-center p-4 bg-clario-surface-50 rounded-2xl">
-                <CircularProgress value={masteredCount > 0 ? (masteredCount / Math.max(totalConcepts, 1)) * 100 : 0} size={70} strokeWidth={5} variant="success" />
-                <p className="mt-2 text-sm text-clario-surface-600">Concepts Mastered</p>
-                <p className="font-display font-bold text-xl text-clario-surface-900">{masteredCount} / {totalConcepts}</p>
-              </div>
+              <p className="text-lg font-medium leading-relaxed text-slate-200">
+                {nextAction}
+              </p>
             </div>
           </Card>
 
-          {/* Concept Breakdown */}
-          <Card padding="lg">
-            <h2 className="section-title mb-6">Concept Progress</h2>
-            <div className="space-y-4">
-              {dashboard.concept_breakdown.map((concept, index) => (
-                <div key={concept.concept} className="animate-slide-up" style={{ animationDelay: `${index * 100}ms` }}>
-                  <div className="flex items-center justify-between gap-4 mb-2">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <Badge status={concept.status} size="sm" />
-                      <div className="min-w-0">
-                        <p className="font-medium text-clario-surface-900 truncate">{concept.concept}</p>
-                        <p className="text-sm text-clario-surface-500">Difficulty: {concept.difficulty}/5</p>
-                      </div>
+          {/* Roadmap Mini-Preview */}
+          {showRoadmapPreview && roadmap && (
+            <Card padding="lg" className="border-none shadow-sm">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="font-display font-black text-lg text-slate-900">Learning Path</h2>
+                <Button variant="ghost" size="sm" onClick={() => navigate('/roadmap')}>
+                  Full Map <ArrowRight className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="space-y-3">
+                {roadmap.roadmap.slice(0, 4).map((concept, index) => (
+                  <div key={concept.concept_id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <div className={cn('w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-colors',
+                      concept.status === 'mastered' ? 'bg-clario-green text-white' :
+                      concept.is_next ? 'bg-clario-blue text-white ring-4 ring-clario-blue-t' :
+                      'bg-slate-200 text-slate-500'
+                    )}>
+                      {concept.status === 'mastered' ? <CheckCircle className="w-4 h-4" /> : index + 1}
                     </div>
+                    <span className="font-bold text-slate-700 text-sm truncate flex-1">{concept.concept_title}</span>
+                    {concept.is_next && <Badge variant="primary" size="sm">Next</Badge>}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}div>
                     <div className="text-right">
                       <p className="font-display font-bold text-clario-surface-900">{Math.round(concept.mastery_score)}%</p>
                     </div>

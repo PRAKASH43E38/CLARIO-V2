@@ -209,6 +209,9 @@ class RoadmapResponse(BaseModel):
     current_topic: str
     topic_id: str
     roadmap: List[RoadmapItem]
+    levels: List[dict] = Field(default_factory=list)
+    current_level_id: Optional[str] = None
+    active_concept_id: Optional[str] = None
 
 
 class ErrorResponse(BaseModel):

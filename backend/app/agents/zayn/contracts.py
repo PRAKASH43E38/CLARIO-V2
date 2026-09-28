@@ -57,6 +57,8 @@ class ZaynTask(BaseModel):
     practical_result_reference: ZaynPracticalReference
     research_source_ids: list[str]
     learner_context: ZaynLearnerContext
+    previous_question_ids: list[str] = Field(default_factory=list)
+    previous_question_texts: list[str] = Field(default_factory=list)
 
 
 class ZaynQuestion(BaseModel):
@@ -101,6 +103,7 @@ class ZaynPresentation(BaseModel):
     session_id: str
     orchestration_id: str
     concept_id: str
+    attempt_number: int = Field(ge=1)
     difficulty: ZaynDifficulty
     time_limit_seconds: int
     questions: list[ZaynPresentationQuestion]

@@ -9,6 +9,17 @@ from backend.app.schemas.research import ResearchConcept, SharedResearchPackage
 LearnerLevel = Literal["beginner", "intermediate", "advanced"]
 
 
+class MiraRemediationMetadata(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    reason: str
+    weakness_evidence: str
+    previous_explanation: str
+    previous_examples: list[str]
+    current_difficulty: Literal["EASY", "MEDIUM", "HARD"]
+    remediation_attempt: int = Field(ge=1)
+
+
 class MiraTeachingTask(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -21,6 +32,7 @@ class MiraTeachingTask(BaseModel):
     shared_research_package: SharedResearchPackage
     current_level: LearnerLevel
     learning_preference: Optional[str] = None
+    remediation: MiraRemediationMetadata | None = None
     teaching_instruction: str
 
 

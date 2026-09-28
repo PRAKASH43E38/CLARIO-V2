@@ -63,6 +63,7 @@ export function App() {
         <Route path="/auth" element={<PublicRoute><AuthPage /></PublicRoute>} />
         <Route path="/profile-setup" element={<ProtectedRoute><ProfileCreationPage /></ProtectedRoute>} />
         <Route path="/mind-profile" element={<ProtectedRoute><MindQuestionsPage /></ProtectedRoute>} />
+        <Route path="/onboarding" element={<Navigate to="/learn/new" replace />} />
         <Route path="/learn/new" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
         <Route element={
           <ProtectedRoute requireSetup>

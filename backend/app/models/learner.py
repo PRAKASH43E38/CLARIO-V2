@@ -1,6 +1,15 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Integer, Float, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import (
+    CheckConstraint,
+    Column,
+    String,
+    Integer,
+    Float,
+    DateTime,
+    ForeignKey,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import relationship
 from backend.app.core.database import Base
 
@@ -14,7 +23,11 @@ class LearnerProfile(Base):
     learning_preference = Column(String, nullable=False)
     interests = Column(String, nullable=False)
     initial_confidence = Column(Integer, nullable=False)
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
     user = relationship("User", back_populates="learner_profile")
     concept_performances = relationship("ConceptPerformance", back_populates="learner_profile", cascade="all, delete-orphan")
@@ -29,10 +42,16 @@ class ConceptPerformance(Base):
     difficulty_level = Column(Integer, nullable=False, default=1)
     mastery_score = Column(Float, nullable=False, default=0.0)
     attempt_count = Column(Integer, nullable=False, default=0)
-    last_assessed_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    last_assessed_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
 
     __table_args__ = (
         UniqueConstraint("profile_id", "concept_id", name="uq_profile_concept"),
+        CheckConstraint(
+            "status IN ('learning', 'mastered', 'remediating')",
+            name="ck_concept_performance_status",
+        ),
     )
 
     learner_profile = relationship("LearnerProfile", back_populates="concept_performances")

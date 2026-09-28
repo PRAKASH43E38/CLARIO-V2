@@ -48,7 +48,7 @@ This repository contains a working early vertical slice, not the complete target
 - CLARIO-AI applies explicit deterministic post-Elara rules: strong + accuracy ≥80% + confidence ≥0.70 satisfies concept mastery; weak evidence reteaches (and lowers only that concept's difficulty when signaled); insufficient evidence retests without mastery. The decision and session-owned concept performance are persisted; no worker makes the decision.
 - Onboarding communicates only with CLARIO-AI and displays the research package, lesson, thinking prompt, practical activity, Zayn challenge, Elara evaluation, and learner-safe next action.
 - A React, TypeScript, and Vite frontend. `frontend/src/main.tsx` is the entry point and `App.tsx` is the route root.
-- A single SQLite database with SQL migrations 001–012, including persistent CALA plans, research packages, one orchestration state, Mira/Ayan/Kira worker results, a Zayn quiz with private answer key/submission evidence, one Elara evaluation, session concept performance, and CLARIO-AI decision records. The existing legacy `concept_performances` table remains separate. This is not the target three-database architecture.
+- A single SQLite database with SQL migrations 001–013, including persistent CALA plans, research packages, orchestration state, attempt-keyed Mira/Ayan/Kira/Zayn/Elara results, session concept performance, CLARIO-AI decision records, and idempotent adaptive execution records. Quiz answer keys remain private. The existing legacy `concept_performances` table remains separate. This is not the target three-database architecture.
 - Legacy `NovaOrchestrator` and generic specialized-agent implementations remain in older learning routes; the new CALA-to-research path is CLARIO-AI controlled.
 
 The current account/session path now creates the learner-profile persistence anchor needed by concept-performance records. Its old compatibility fields record the first learning goal/interest and Mind Profile explanation preference; current level is marked `unassessed`, and initial confidence uses `0` as an unknown sentinel. These values are not a dynamic learner model.
@@ -58,7 +58,7 @@ The current account/session path now creates the learner-profile persistence anc
 - User identity is represented in the browser by a local-storage user ID; there is no secure server-issued session/token flow. Google OAuth is disabled.
 - CALA currently provides only initial deterministic planning and a Level 1 roadmap; it is not the complete adaptive learner model. CLARIO-AI owns the persisted CALA-to-research-to-Mira-to-Ayan-to-Kira-to-Zayn-to-Elara path and deterministic post-Elara decisions. Query refinement and Nova's autonomous source retrieval are not implemented.
 - Research uses actual Tavily results when `TAVILY_API_KEY` is configured. Invalid or irrelevant results are filtered; fewer than ten sources are returned when fewer pass validation. No sources are fabricated. The research package contains source metadata and retrieved excerpts, not independently verified facts or generated teaching content.
-- The post-Elara decision and concept-performance foundation is implemented, but automatic Mira reteaching/retesting cycles, Ayan/Kira learner response capture/grading, later-level curriculum, three separate SQLite databases, persistent gamification, and final report are not implemented. Elara evaluates submitted quiz performance and teaching coverage only; Ayan/Kira learner responses are explicitly unavailable. Roadmap advancement is conservative: only fully evidenced mapped concepts can complete a level; empty placeholder levels are not unlocked.
+- CLARIO-AI executes persisted `RETEACH`/`REDUCE_DIFFICULTY` decisions through a concept-specific Mira → Ayan → Kira → Zayn attempt and `RETEST` through a new Zayn quiz. Attempts are persisted without replacing prior quizzes; submitted attempts loop through Elara and CLARIO-AI again. `CLARIO_MAX_REMEDIATION_ATTEMPTS` defaults to 3; the limit is explicit and never implies mastery. Ayan/Kira learner response capture/grading, later-level curriculum, three separate SQLite databases, persistent gamification, and final report are not implemented. Elara evaluates submitted quiz performance and teaching coverage only; Ayan/Kira learner responses are explicitly unavailable. Roadmap advancement is conservative: only fully evidenced mapped concepts can complete a level; empty placeholder levels are not unlocked.
 - The four inputs are used by CALA and passed through Nova's research request, Mira's teaching task, Ayan's thinking task, and Kira's practical task. Ayan and Kira do not collect or grade learner answers.
 - Some dashboard reward values are placeholders.
 
@@ -80,8 +80,7 @@ npm install
 npm run dev
 ```
 
-Vite proxies `/api` to `http://localhost:8000`. Set `GEMINI_API_KEY` in `.env` to use Gemini; without a configured key the provider factory uses its mock provider.
-Set `TAVILY_API_KEY` in the backend environment to enable real research searches. The rest of the application starts without it; a new research request returns a clear configuration error until it is set.
+Vite proxies `/api` to `http://localhost:8000`. Copy `.env.example` to `.env` (a local `.env` is already ignored by Git) and add credentials for the providers you choose. `AI_PROVIDER` supports `mock`, `gemini`, `openrouter`, or `mistral`; each real provider requires its matching key and reports a clear configuration error if missing. `AI_MODEL` is optional and defaults to the provider's configured default model. Set `TAVILY_API_KEY` to enable live web research; without it, research requests return a configuration error.
 
 ## Verification
 
@@ -91,7 +90,7 @@ Set-Location frontend
 npm run build
 ```
 
-Latest verification: full backend test suite passed (167 tests), frontend production build passed, and migration 012 fresh/rerun safety is covered by passing migration tests.
+Latest verification: `python -m pytest -q` passed (189 tests), the frontend production build passed, and migrations 001–013 were previously verified on a clean SQLite database with a safe rerun and no `PRAGMA foreign_key_check` violations.
 
 ## Documentation
 

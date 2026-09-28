@@ -92,6 +92,14 @@ export interface CalaRoadmapLevel {
   order: number;
   is_unlocked: boolean;
   completion_state: 'not_started' | 'in_progress' | 'completed';
+  level_state:
+    | 'LEVEL_LOCKED'
+    | 'LEVEL_UNLOCKED'
+    | 'LEVEL_ENTERED'
+    | 'LEVEL_RESEARCH'
+    | 'LEVEL_COMPLETED';
+  prerequisites: string[];
+  owner_session_id: string | null;
   topics: CalaRoadmapTopic[];
 }
 
@@ -110,12 +118,39 @@ export interface CalaResult {
   confidence_state: CalaConfidenceState;
   recommended_starting_level: string;
   recommended_starting_level_reason: string;
+  current_level_id: string | null;
+  active_concept_id: string | null;
+  active_attempt_number: number;
+  curriculum_complete: boolean;
+  progression_history: CalaLevelProgressionEvent[];
   learning_goal: string;
   task: string;
   learner_state: string;
   interest: string;
   roadmap: CalaRoadmapLevel[];
   initial_agent_routing: CalaAgentRoutingStep[];
+}
+
+export interface CalaLevelProgressionEvent {
+  action:
+    | 'COMPLETE_LEVEL'
+    | 'UNLOCK_NEXT_LEVEL'
+    | 'COMPLETE_GOAL'
+    | 'LEVEL_ENTERED'
+    | 'CONCEPT_ADVANCED';
+  level_id: string;
+  concept_id: string | null;
+  next_level_id: string | null;
+  reason: string;
+  occurred_at: string;
+}
+
+export interface CalaLevelProgressionResult {
+  action: 'CONCEPT_ADVANCED' | 'UNLOCK_NEXT_LEVEL' | 'COMPLETE_GOAL';
+  level_id: string;
+  next_level_id: string | null;
+  reason: string;
+  plan: CalaResult;
 }
 
 export interface ResearchConcept {
@@ -202,7 +237,14 @@ export type OrchestrationState =
   | 'DECISION_REQUESTED'
   | 'DECIDING'
   | 'DECISION_READY'
-  | 'DECISION_FAILED';
+  | 'DECISION_FAILED'
+  | 'DECISION_APPLIED'
+  | 'REMEDIATION_REQUESTED'
+  | 'REMEDIATING'
+  | 'REMEDIATION_FAILED'
+  | 'REMEDIATION_LIMIT_REACHED'
+  | 'RETEST_REQUESTED'
+  | 'RETEST_FAILED';
 
 export interface MiraTeachingResponse {
   session_id: string;
@@ -264,6 +306,7 @@ export interface ZaynQuizPresentation {
   session_id: string;
   orchestration_id: string;
   concept_id: string;
+  attempt_number: number;
   difficulty: ZaynDifficulty;
   time_limit_seconds: number;
   questions: ZaynPresentationQuestion[];
@@ -338,6 +381,38 @@ export interface ClarioAdaptiveDecision {
   evaluation_reference: string;
   remediation_required: boolean;
   decided_at: string;
+}
+
+export interface RemediationContext {
+  session_id: string;
+  orchestration_id: string;
+  concept_id: string;
+  concept_name: string;
+  decision_id: string;
+  decision_type: AdaptiveDecisionAction;
+  reason: string;
+  previous_difficulty: ZaynDifficulty;
+  new_difficulty: ZaynDifficulty;
+  remediation_attempt: number;
+  source_evaluation_id: string;
+}
+
+export interface AdaptiveExecutionResult {
+  execution_id: string;
+  session_id: string;
+  concept_id: string;
+  decision_type: AdaptiveDecisionAction;
+  status:
+    | 'IN_PROGRESS'
+    | 'AWAITING_SUBMISSION'
+    | 'COMPLETED'
+    | 'FAILED'
+    | 'LIMIT_REACHED';
+  remediation_context: RemediationContext;
+  error_message: string | null;
+  current_state: OrchestrationState;
+  quiz: ZaynQuizPresentation | null;
+  updated_at: string;
 }
 
 export interface SessionConceptPerformance {
@@ -529,6 +604,9 @@ export interface RoadmapResponse {
   current_topic: string;
   topic_id: string;
   roadmap: RoadmapItem[];
+  levels: CalaRoadmapLevel[];
+  current_level_id: string | null;
+  active_concept_id: string | null;
 }
 
 export interface HealthResponse {

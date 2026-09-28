@@ -37,6 +37,14 @@ from backend.app.clario_ai import (
     EvaluationPersistenceFailure,
     DecisionPrerequisiteError,
     DecisionPersistenceFailure,
+    AdaptiveExecutionConfigurationError,
+    AdaptiveExecutionOutputInvalid,
+    AdaptiveExecutionPersistenceFailure,
+    AdaptiveExecutionPrerequisiteError,
+    AdaptiveExecutionProviderFailure,
+    LevelCurriculumOutputInvalid,
+    LevelCurriculumProviderFailure,
+    LevelProgressionPrerequisiteError,
 )
 from backend.app.core.database import get_db
 from backend.app.models.repositories import SessionRepository, UserRepository
@@ -56,6 +64,8 @@ from backend.app.schemas.adaptive_decision import (
     AdaptiveDecision,
     SessionConceptPerformance,
 )
+from backend.app.schemas.adaptive_execution import AdaptiveExecutionResult
+from backend.app.cala.schemas import CalaResult, LevelProgressionResult
 
 router = APIRouter(prefix="/api/v1", tags=["orchestration"])
 
@@ -388,6 +398,91 @@ async def request_orchestration_decision(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except DecisionPersistenceFailure as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post(
+    "/sessions/{session_id}/orchestration/decision/execute",
+    response_model=AdaptiveExecutionResult,
+)
+async def execute_orchestration_decision(
+    session_id: str,
+    user_id: str,
+    db: Session = Depends(get_db),
+    ai_provider: BaseAIProvider = Depends(get_teaching_ai_provider),
+):
+    session = _get_owned_session(session_id, user_id, db)
+    try:
+        return await ClarioAIOrchestrator.execute_decision(
+            db, session.id, ai_provider
+        )
+    except AdaptiveExecutionPrerequisiteError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except AdaptiveExecutionConfigurationError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except AdaptiveExecutionProviderFailure as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except AdaptiveExecutionOutputInvalid as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except AdaptiveExecutionPersistenceFailure as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post(
+    "/sessions/{session_id}/orchestration/progression",
+    response_model=LevelProgressionResult,
+)
+async def advance_orchestration_progression(
+    session_id: str,
+    user_id: str,
+    db: Session = Depends(get_db),
+    ai_provider: BaseAIProvider = Depends(get_teaching_ai_provider),
+):
+    session = _get_owned_session(session_id, user_id, db)
+    try:
+        return await ClarioAIOrchestrator.advance_progression(
+            db, session.id, ai_provider
+        )
+    except LevelProgressionPrerequisiteError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except LevelCurriculumOutputInvalid as exc:
+        db.rollback()
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except LevelCurriculumProviderFailure as exc:
+        db.rollback()
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@router.post(
+    "/sessions/{session_id}/levels/{level_id}/enter",
+    response_model=CalaResult,
+)
+async def enter_orchestration_level(
+    session_id: str,
+    level_id: str,
+    user_id: str,
+    db: Session = Depends(get_db),
+):
+    session = _get_owned_session(session_id, user_id, db)
+    try:
+        return ClarioAIOrchestrator.enter_level(db, session.id, level_id)
+    except LevelProgressionPrerequisiteError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.get(
+    "/sessions/{session_id}/orchestration/remediation",
+    response_model=AdaptiveExecutionResult,
+)
+async def get_orchestration_adaptive_execution(
+    session_id: str,
+    user_id: str,
+    db: Session = Depends(get_db),
+):
+    session = _get_owned_session(session_id, user_id, db)
+    execution = ClarioAIOrchestrator.get_adaptive_execution(db, session.id)
+    if execution is None:
+        raise HTTPException(status_code=404, detail="Adaptive execution not found.")
+    return execution
 
 
 @router.get(

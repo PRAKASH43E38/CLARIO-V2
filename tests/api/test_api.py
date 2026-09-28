@@ -171,8 +171,8 @@ def test_email_auth_profile_mind_profile_and_learning_inputs(client):
         "cpt_information_gain",
         "cpt_tree_splits",
     ]
-    assert all(not level["is_unlocked"] for level in plan["roadmap"][1:])
-    assert all(level["completion_state"] == "not_started" for level in plan["roadmap"])
+    assert len(plan["roadmap"]) == 1
+    assert plan["roadmap"][0]["completion_state"] == "not_started"
     assert all(step["status"] == "planned" for step in plan["initial_agent_routing"])
     assert client.post(
         f"/api/v1/sessions/{response_data['session_id']}/cala-plan?user_id={user_id}"

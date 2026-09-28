@@ -44,6 +44,13 @@ class MiraTeachingAgent(BaseAgent):
             "the learner level exactly as provided.\n\n"
             f"Teaching task:\n{json.dumps(task.model_dump(mode='json'), ensure_ascii=True)}"
         )
+        if task.remediation:
+            prompt += (
+                "\n\nThis is a remediation attempt. Address the stated weakness "
+                "using a meaningfully different teaching strategy, a fresh example, "
+                "and a restructured explanation. Do not repeat the previous "
+                "explanation or examples."
+            )
         try:
             generated = self.ai_provider.generate_structured(
                 prompt=prompt,
@@ -70,6 +77,26 @@ class MiraTeachingAgent(BaseAgent):
             raise MiraResponseError("Mira response does not match the requested concept.")
         if generated.learner_level != task.current_level:
             raise MiraResponseError("Mira response changed the CALA learner level.")
+        if task.remediation:
+            previous_explanation = " ".join(
+                task.remediation.previous_explanation.casefold().split()
+            )
+            generated_explanation = " ".join(generated.explanation.casefold().split())
+            previous_examples = {
+                " ".join(example.casefold().split())
+                for example in task.remediation.previous_examples
+            }
+            generated_examples = {
+                " ".join(example.casefold().split())
+                for example in generated.examples
+            }
+            if (
+                generated_explanation == previous_explanation
+                or generated_examples == previous_examples
+            ):
+                raise MiraResponseError(
+                    "Mira repeated the previous remediation explanation or examples."
+                )
 
         sources_by_id = {
             source.source_id: source

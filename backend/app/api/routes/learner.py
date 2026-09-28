@@ -11,7 +11,7 @@ from backend.app.models.repositories import (
 )
 from backend.app.models.user import User
 
-router = APIRouter(prefix="/api/v1", tags=["learner"])
+router = APIRouter(prefix="/api/v1/learner", tags=["learner"])
 
 
 @router.get("/profile", response_model=UserProfileResponse)

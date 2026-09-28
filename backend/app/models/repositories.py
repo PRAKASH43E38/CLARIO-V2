@@ -20,6 +20,7 @@ from backend.app.models.session_concept_performance import (
     SessionConceptPerformanceRecord,
 )
 from backend.app.models.adaptive_decision import AdaptiveDecisionRecord
+from backend.app.models.adaptive_execution import AdaptiveExecutionRecord
 
 class UserRepository:
     @staticmethod
@@ -113,19 +114,35 @@ class CalaPlanRepository:
 
 class ResearchPackageRepository:
     @staticmethod
+    def get_by_id(db: Session, package_id: str) -> Optional[ResearchPackageRecord]:
+        return (
+            db.query(ResearchPackageRecord)
+            .filter(ResearchPackageRecord.id == package_id)
+            .first()
+        )
+
+    @staticmethod
     def get_by_session_id(db: Session, session_id: str) -> Optional[ResearchPackageRecord]:
         return (
             db.query(ResearchPackageRecord)
             .filter(ResearchPackageRecord.session_id == session_id)
+            .order_by(ResearchPackageRecord.attempt_number.desc())
             .first()
         )
 
     @staticmethod
     def create(
-        db: Session, session_id: str, package_json: str
+        db: Session,
+        session_id: str,
+        package_json: str,
+        *,
+        level_id: Optional[str] = None,
+        attempt_number: int = 1,
     ) -> ResearchPackageRecord:
         record = ResearchPackageRecord(
             session_id=session_id,
+            level_id=level_id,
+            attempt_number=attempt_number,
             package_json=package_json,
         )
         db.add(record)
@@ -133,7 +150,14 @@ class ResearchPackageRepository:
             db.commit()
         except IntegrityError:
             db.rollback()
-            existing = ResearchPackageRepository.get_by_session_id(db, session_id)
+            existing = (
+                db.query(ResearchPackageRecord)
+                .filter(
+                    ResearchPackageRecord.session_id == session_id,
+                    ResearchPackageRecord.attempt_number == attempt_number,
+                )
+                .first()
+            )
             if existing is None:
                 raise
             return existing
@@ -206,6 +230,20 @@ class TeachingResultRepository:
         return (
             db.query(TeachingResultRecord)
             .filter(TeachingResultRecord.session_id == session_id)
+            .order_by(TeachingResultRecord.attempt_number.desc())
+            .first()
+        )
+
+    @staticmethod
+    def get_by_session_and_attempt(
+        db: Session, session_id: str, attempt_number: int
+    ) -> Optional[TeachingResultRecord]:
+        return (
+            db.query(TeachingResultRecord)
+            .filter(
+                TeachingResultRecord.session_id == session_id,
+                TeachingResultRecord.attempt_number == attempt_number,
+            )
             .first()
         )
 
@@ -217,6 +255,7 @@ class TeachingResultRepository:
         concept: str,
         response_json: str,
         learner_level: str,
+        attempt_number: int = 1,
     ) -> TeachingResultRecord:
         record = TeachingResultRecord(
             session_id=session_id,
@@ -224,13 +263,16 @@ class TeachingResultRepository:
             concept=concept,
             response_json=response_json,
             learner_level=learner_level,
+            attempt_number=attempt_number,
         )
         db.add(record)
         try:
             db.commit()
         except IntegrityError:
             db.rollback()
-            existing = TeachingResultRepository.get_by_session_id(db, session_id)
+            existing = TeachingResultRepository.get_by_session_and_attempt(
+                db, session_id, attempt_number
+            )
             if existing is None:
                 raise
             return existing
@@ -246,6 +288,20 @@ class ThinkingResultRepository:
         return (
             db.query(ThinkingResultRecord)
             .filter(ThinkingResultRecord.session_id == session_id)
+            .order_by(ThinkingResultRecord.attempt_number.desc())
+            .first()
+        )
+
+    @staticmethod
+    def get_by_session_and_attempt(
+        db: Session, session_id: str, attempt_number: int
+    ) -> Optional[ThinkingResultRecord]:
+        return (
+            db.query(ThinkingResultRecord)
+            .filter(
+                ThinkingResultRecord.session_id == session_id,
+                ThinkingResultRecord.attempt_number == attempt_number,
+            )
             .first()
         )
 
@@ -256,19 +312,23 @@ class ThinkingResultRepository:
         orchestration_id: str,
         concept: str,
         response_json: str,
+        attempt_number: int = 1,
     ) -> ThinkingResultRecord:
         record = ThinkingResultRecord(
             session_id=session_id,
             orchestration_id=orchestration_id,
             concept=concept,
             response_json=response_json,
+            attempt_number=attempt_number,
         )
         db.add(record)
         try:
             db.commit()
         except IntegrityError:
             db.rollback()
-            existing = ThinkingResultRepository.get_by_session_id(db, session_id)
+            existing = ThinkingResultRepository.get_by_session_and_attempt(
+                db, session_id, attempt_number
+            )
             if existing is None:
                 raise
             return existing
@@ -284,6 +344,34 @@ class PracticalResultRepository:
         return (
             db.query(PracticalResultRecord)
             .filter(PracticalResultRecord.session_id == session_id)
+            .order_by(PracticalResultRecord.attempt_number.desc())
+            .first()
+        )
+
+    @staticmethod
+    def get_by_session_and_attempt(
+        db: Session, session_id: str, attempt_number: int
+    ) -> Optional[PracticalResultRecord]:
+        return (
+            db.query(PracticalResultRecord)
+            .filter(
+                PracticalResultRecord.session_id == session_id,
+                PracticalResultRecord.attempt_number == attempt_number,
+            )
+            .first()
+        )
+
+    @staticmethod
+    def get_latest_before_attempt(
+        db: Session, session_id: str, attempt_number: int
+    ) -> Optional[PracticalResultRecord]:
+        return (
+            db.query(PracticalResultRecord)
+            .filter(
+                PracticalResultRecord.session_id == session_id,
+                PracticalResultRecord.attempt_number < attempt_number,
+            )
+            .order_by(PracticalResultRecord.attempt_number.desc())
             .first()
         )
 
@@ -300,6 +388,7 @@ class PracticalResultRepository:
         success_criteria: str,
         difficulty: str,
         research_source_ids: str,
+        attempt_number: int = 1,
     ) -> PracticalResultRecord:
         record = PracticalResultRecord(
             session_id=session_id,
@@ -312,13 +401,16 @@ class PracticalResultRepository:
             success_criteria=success_criteria,
             difficulty=difficulty,
             research_source_ids=research_source_ids,
+            attempt_number=attempt_number,
         )
         db.add(record)
         try:
             db.commit()
         except IntegrityError:
             db.rollback()
-            existing = PracticalResultRepository.get_by_session_id(db, session_id)
+            existing = PracticalResultRepository.get_by_session_and_attempt(
+                db, session_id, attempt_number
+            )
             if existing is None:
                 raise
             return existing
@@ -332,7 +424,32 @@ class QuizResultRepository:
         return (
             db.query(QuizResultRecord)
             .filter(QuizResultRecord.session_id == session_id)
+            .order_by(QuizResultRecord.attempt_number.desc())
             .first()
+        )
+
+    @staticmethod
+    def get_by_session_and_attempt(
+        db: Session, session_id: str, attempt_number: int
+    ) -> Optional[QuizResultRecord]:
+        return (
+            db.query(QuizResultRecord)
+            .filter(
+                QuizResultRecord.session_id == session_id,
+                QuizResultRecord.attempt_number == attempt_number,
+            )
+            .first()
+        )
+
+    @staticmethod
+    def list_by_session_id(
+        db: Session, session_id: str
+    ) -> list[QuizResultRecord]:
+        return (
+            db.query(QuizResultRecord)
+            .filter(QuizResultRecord.session_id == session_id)
+            .order_by(QuizResultRecord.attempt_number)
+            .all()
         )
 
     @staticmethod
@@ -349,6 +466,7 @@ class QuizResultRepository:
         time_limit_seconds: int,
         questions_json: str,
         answer_key_json: str,
+        attempt_number: int = 1,
     ) -> QuizResultRecord:
         record = QuizResultRecord(
             session_id=session_id,
@@ -359,13 +477,16 @@ class QuizResultRepository:
             questions_json=questions_json,
             answer_key_json=answer_key_json,
             status="GENERATED",
+            attempt_number=attempt_number,
         )
         db.add(record)
         try:
             db.commit()
         except IntegrityError:
             db.rollback()
-            existing = QuizResultRepository.get_by_session_id(db, session_id)
+            existing = QuizResultRepository.get_by_session_and_attempt(
+                db, session_id, attempt_number
+            )
             if existing is None:
                 raise
             return existing
@@ -381,6 +502,28 @@ class ElaraEvaluationRepository:
         return (
             db.query(ElaraEvaluationRecord)
             .filter(ElaraEvaluationRecord.session_id == session_id)
+            .order_by(ElaraEvaluationRecord.attempt_number.desc())
+            .first()
+        )
+
+    @staticmethod
+    def get_by_session_and_attempt(
+        db: Session, session_id: str, attempt_number: int
+    ) -> Optional[ElaraEvaluationRecord]:
+        return (
+            db.query(ElaraEvaluationRecord)
+            .filter(
+                ElaraEvaluationRecord.session_id == session_id,
+                ElaraEvaluationRecord.attempt_number == attempt_number,
+            )
+            .first()
+        )
+
+    @staticmethod
+    def get_by_id(db: Session, evaluation_id: str) -> Optional[ElaraEvaluationRecord]:
+        return (
+            db.query(ElaraEvaluationRecord)
+            .filter(ElaraEvaluationRecord.id == evaluation_id)
             .first()
         )
 
@@ -402,6 +545,7 @@ class ElaraEvaluationRepository:
         evidence_summary: str,
         evaluation_json: str,
         evaluated_at: datetime,
+        attempt_number: int = 1,
     ) -> ElaraEvaluationRecord:
         record = ElaraEvaluationRecord(
             session_id=session_id,
@@ -418,13 +562,16 @@ class ElaraEvaluationRepository:
             evidence_summary=evidence_summary,
             evaluation_json=evaluation_json,
             evaluated_at=evaluated_at,
+            attempt_number=attempt_number,
         )
         db.add(record)
         try:
             db.commit()
         except IntegrityError:
             db.rollback()
-            existing = ElaraEvaluationRepository.get_by_session_id(db, session_id)
+            existing = ElaraEvaluationRepository.get_by_session_and_attempt(
+                db, session_id, attempt_number
+            )
             if existing is None:
                 raise
             return existing
@@ -489,6 +636,14 @@ class AdaptiveDecisionRepository:
         )
 
     @staticmethod
+    def get_by_id(db: Session, decision_id: str) -> Optional[AdaptiveDecisionRecord]:
+        return (
+            db.query(AdaptiveDecisionRecord)
+            .filter(AdaptiveDecisionRecord.id == decision_id)
+            .first()
+        )
+
+    @staticmethod
     def create_if_missing(
         db: Session,
         *,
@@ -503,11 +658,13 @@ class AdaptiveDecisionRepository:
         reason: str,
         remediation_required: bool,
         decision_json: str,
+        level_id: Optional[str] = None,
     ) -> AdaptiveDecisionRecord:
         record = AdaptiveDecisionRecord(
             session_id=session_id,
             orchestration_id=orchestration_id,
             concept_id=concept_id,
+            level_id=level_id,
             evaluation_id=evaluation_id,
             decision=decision,
             mastery_status=mastery_status,
@@ -528,6 +685,100 @@ class AdaptiveDecisionRepository:
             if existing is None:
                 raise
             return existing
+        db.refresh(record)
+        return record
+
+
+class AdaptiveExecutionRepository:
+    @staticmethod
+    def get_by_decision_id(
+        db: Session, decision_id: str
+    ) -> Optional[AdaptiveExecutionRecord]:
+        return (
+            db.query(AdaptiveExecutionRecord)
+            .filter(AdaptiveExecutionRecord.decision_id == decision_id)
+            .first()
+        )
+
+    @staticmethod
+    def get_latest_by_session_id(
+        db: Session, session_id: str
+    ) -> Optional[AdaptiveExecutionRecord]:
+        return (
+            db.query(AdaptiveExecutionRecord)
+            .filter(AdaptiveExecutionRecord.session_id == session_id)
+            .order_by(AdaptiveExecutionRecord.attempt_number.desc())
+            .first()
+        )
+
+    @staticmethod
+    def count_by_session_and_concept(
+        db: Session, session_id: str, concept_id: str
+    ) -> int:
+        return (
+            db.query(AdaptiveExecutionRecord)
+            .filter(
+                AdaptiveExecutionRecord.session_id == session_id,
+                AdaptiveExecutionRecord.concept_id == concept_id,
+                AdaptiveExecutionRecord.status != "LIMIT_REACHED",
+                AdaptiveExecutionRecord.decision_type.in_(
+                    {"RETEACH", "REDUCE_DIFFICULTY", "RETEST"}
+                ),
+            )
+            .count()
+        )
+
+    @staticmethod
+    def create(
+        db: Session,
+        *,
+        session_id: str,
+        orchestration_id: str,
+        concept_id: str,
+        decision_id: str,
+        source_evaluation_id: str,
+        attempt_number: int,
+        decision_type: str,
+        status: str,
+        remediation_context_json: str,
+    ) -> tuple[AdaptiveExecutionRecord, bool]:
+        record = AdaptiveExecutionRecord(
+            session_id=session_id,
+            orchestration_id=orchestration_id,
+            concept_id=concept_id,
+            decision_id=decision_id,
+            source_evaluation_id=source_evaluation_id,
+            attempt_number=attempt_number,
+            decision_type=decision_type,
+            status=status,
+            remediation_context_json=remediation_context_json,
+        )
+        db.add(record)
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            existing = AdaptiveExecutionRepository.get_by_decision_id(
+                db, decision_id
+            )
+            if existing is None:
+                raise
+            return existing, False
+        db.refresh(record)
+        return record, True
+
+    @staticmethod
+    def update(
+        db: Session,
+        record: AdaptiveExecutionRecord,
+        *,
+        status: str,
+        error_message: Optional[str] = None,
+    ) -> AdaptiveExecutionRecord:
+        record.status = status
+        record.error_message = error_message
+        record.updated_at = datetime.now(timezone.utc)
+        db.commit()
         db.refresh(record)
         return record
 
@@ -610,6 +861,40 @@ class LearnerProfileRepository:
         return profile
 
 class CurriculumRepository:
+    @staticmethod
+    def create_generated_level(
+        db: Session,
+        topics: list[dict[str, object]],
+        level_order: int,
+        owner_session_id: str,
+    ) -> list[tuple[Topic, list[Concept]]]:
+        generated: list[tuple[Topic, list[Concept]]] = []
+        for topic_index, topic_data in enumerate(topics, start=1):
+            topic = Topic(
+                title=str(topic_data["title"]),
+                description=topic_data.get("description"),
+                sequence_order=level_order * 100 + topic_index,
+                owner_session_id=owner_session_id,
+            )
+            db.add(topic)
+            db.flush()
+            concepts = [
+                Concept(
+                    topic_id=topic.id,
+                    title=str(concept_data["title"]),
+                    description=str(concept_data["description"]),
+                    base_difficulty=min(level_order, 5),
+                    sequence_order=concept_index,
+                )
+                for concept_index, concept_data in enumerate(
+                    topic_data["concepts"], start=1
+                )
+            ]
+            db.add_all(concepts)
+            db.flush()
+            generated.append((topic, concepts))
+        return generated
+
     @staticmethod
     def create_topic(db: Session, title: str, description: Optional[str] = None, sequence_order: int = 1) -> Topic:
         topic = Topic(title=title, description=description, sequence_order=sequence_order)

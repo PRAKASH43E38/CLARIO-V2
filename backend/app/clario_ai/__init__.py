@@ -32,6 +32,14 @@ from backend.app.clario_ai.orchestrator import (
     EvaluationPersistenceFailure,
     DecisionPrerequisiteError,
     DecisionPersistenceFailure,
+    AdaptiveExecutionConfigurationError,
+    AdaptiveExecutionOutputInvalid,
+    AdaptiveExecutionPersistenceFailure,
+    AdaptiveExecutionPrerequisiteError,
+    AdaptiveExecutionProviderFailure,
+    LevelCurriculumOutputInvalid,
+    LevelCurriculumProviderFailure,
+    LevelProgressionPrerequisiteError,
 )
 
 __all__ = [
@@ -68,4 +76,12 @@ __all__ = [
     "EvaluationPersistenceFailure",
     "DecisionPrerequisiteError",
     "DecisionPersistenceFailure",
+    "AdaptiveExecutionConfigurationError",
+    "AdaptiveExecutionOutputInvalid",
+    "AdaptiveExecutionPersistenceFailure",
+    "AdaptiveExecutionPrerequisiteError",
+    "AdaptiveExecutionProviderFailure",
+    "LevelCurriculumOutputInvalid",
+    "LevelCurriculumProviderFailure",
+    "LevelProgressionPrerequisiteError",
 ]

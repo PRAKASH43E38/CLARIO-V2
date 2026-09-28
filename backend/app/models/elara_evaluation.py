@@ -1,13 +1,45 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, String, Text
+from sqlalchemy import (
+    CheckConstraint,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 
 from backend.app.core.database import Base
 
 
 class ElaraEvaluationRecord(Base):
     __tablename__ = "elara_evaluations"
+    __table_args__ = (
+        UniqueConstraint("session_id", "attempt_number"),
+        UniqueConstraint("orchestration_id", "attempt_number"),
+        CheckConstraint(
+            "concept_strength IN ('strong', 'moderate', 'weak', 'insufficient_evidence')",
+            name="ck_elara_evaluation_strength",
+        ),
+        CheckConstraint(
+            "concept_weakness IN ('none', 'conceptual', 'reasoning', 'practical', "
+            "'recall', 'mixed', 'insufficient_evidence')",
+            name="ck_elara_evaluation_weakness",
+        ),
+        CheckConstraint(
+            "confidence >= 0 AND confidence <= 1",
+            name="ck_elara_evaluation_confidence",
+        ),
+        CheckConstraint(
+            "difficulty_signal IN ('increase', 'maintain', 'decrease', 'insufficient_evidence')",
+            name="ck_elara_evaluation_difficulty_signal",
+        ),
+        CheckConstraint("attempt_number >= 1", name="ck_elara_evaluation_attempt"),
+    )
 
     id = Column(
         String,
@@ -17,13 +49,11 @@ class ElaraEvaluationRecord(Base):
     session_id = Column(
         String,
         ForeignKey("learning_sessions.id", ondelete="CASCADE"),
-        unique=True,
         nullable=False,
     )
     orchestration_id = Column(
         String,
         ForeignKey("clario_orchestrations.id", ondelete="CASCADE"),
-        unique=True,
         nullable=False,
     )
     concept_id = Column(
@@ -47,12 +77,15 @@ class ElaraEvaluationRecord(Base):
     evidence_summary = Column(Text, nullable=False)
     evaluation_json = Column(Text, nullable=False)
     created_at = Column(
-        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
     )
     updated_at = Column(
-        DateTime,
+        DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
-    evaluated_at = Column(DateTime, nullable=False)
+    attempt_number = Column(Integer, nullable=False, default=1)
+    evaluated_at = Column(DateTime(timezone=True), nullable=False)

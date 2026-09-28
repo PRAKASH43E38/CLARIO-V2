@@ -51,9 +51,9 @@ def test_ayan_thinking_results_are_session_and_orchestration_owned(temp_db):
 
     assert "thinking_results" in inspector.get_table_names()
     assert {
-        constraint["column_names"][0]
+        tuple(constraint["column_names"])
         for constraint in inspector.get_unique_constraints("thinking_results")
-    } == {"session_id", "orchestration_id"}
+    } == {("session_id", "attempt_number"), ("orchestration_id", "attempt_number")}
     foreign_keys = {
         (
             constraint["constrained_columns"][0],
@@ -73,9 +73,9 @@ def test_kira_practical_results_are_session_and_orchestration_owned(temp_db):
 
     assert "practical_results" in inspector.get_table_names()
     assert {
-        constraint["column_names"][0]
+        tuple(constraint["column_names"])
         for constraint in inspector.get_unique_constraints("practical_results")
-    } == {"session_id", "orchestration_id"}
+    } == {("session_id", "attempt_number"), ("orchestration_id", "attempt_number")}
     foreign_keys = {
         (
             constraint["constrained_columns"][0],
@@ -96,9 +96,9 @@ def test_zayn_quiz_results_store_private_answer_key_and_submission_state(temp_db
 
     assert "quiz_results" in inspector.get_table_names()
     assert {
-        constraint["column_names"][0]
+        tuple(constraint["column_names"])
         for constraint in inspector.get_unique_constraints("quiz_results")
-    } == {"session_id", "orchestration_id"}
+    } == {("session_id", "attempt_number"), ("orchestration_id", "attempt_number")}
     foreign_keys = {
         (
             constraint["constrained_columns"][0],
@@ -128,9 +128,13 @@ def test_elara_evaluations_are_session_orchestration_quiz_owned(temp_db):
 
     assert "elara_evaluations" in inspector.get_table_names()
     assert {
-        constraint["column_names"][0]
+        tuple(constraint["column_names"])
         for constraint in inspector.get_unique_constraints("elara_evaluations")
-    } == {"session_id", "orchestration_id", "quiz_result_id"}
+    } == {
+        ("session_id", "attempt_number"),
+        ("orchestration_id", "attempt_number"),
+        ("quiz_result_id",),
+    }
     foreign_keys = {
         (
             constraint["constrained_columns"][0],
@@ -159,6 +163,50 @@ def test_elara_evaluations_are_session_orchestration_quiz_owned(temp_db):
         "evaluated_at",
     }.issubset(columns)
     assert run_migrations(path) == []
+
+
+def test_adaptive_remediation_migration_preserves_attempts_and_foreign_keys(temp_db):
+    db, path = temp_db
+    inspector = inspect(db.get_bind())
+
+    assert "clario_adaptive_executions" in inspector.get_table_names()
+    execution_foreign_keys = {
+        constraint["referred_table"]
+        for constraint in inspector.get_foreign_keys("clario_adaptive_executions")
+    }
+    assert execution_foreign_keys == {
+        "learning_sessions",
+        "clario_orchestrations",
+        "concepts",
+        "adaptive_decisions",
+        "elara_evaluations",
+    }
+    assert {
+        tuple(constraint["column_names"])
+        for constraint in inspector.get_unique_constraints(
+            "clario_adaptive_executions"
+        )
+    } == {("decision_id",), ("session_id", "concept_id", "attempt_number")}
+    for table in (
+        "teaching_results",
+        "thinking_results",
+        "practical_results",
+        "quiz_results",
+        "elara_evaluations",
+    ):
+        assert "attempt_number" in {
+            column["name"] for column in inspector.get_columns(table)
+        }
+        assert {
+            tuple(constraint["column_names"])
+            for constraint in inspector.get_unique_constraints(table)
+        } >= {
+            ("session_id", "attempt_number"),
+            ("orchestration_id", "attempt_number"),
+        }
+    assert run_migrations(path) == []
+    with db.connection() as connection:
+        assert connection.exec_driver_sql("PRAGMA foreign_key_check").all() == []
 
 def test_session_concept_performance_and_adaptive_decision_constraints(temp_db):
     db, path = temp_db

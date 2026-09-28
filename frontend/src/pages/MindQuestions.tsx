@@ -1,8 +1,9 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Card } from '../components';
 import { useAuth } from '../hooks';
 import { api } from '../services';
+import { cn } from '../utils/helpers';
 
 const QUESTIONS = [
   {
@@ -55,15 +56,18 @@ export function MindQuestionsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!userId) return;
+    if (!profileComplete) {
+      navigate('/profile-setup', { replace: true });
+    } else if (mindProfileComplete) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [userId, profileComplete, mindProfileComplete, navigate]);
+
   if (!userId) return null;
-  if (!profileComplete) {
-    navigate('/profile-setup', { replace: true });
-    return null;
-  }
-  if (mindProfileComplete) {
-    navigate('/dashboard', { replace: true });
-    return null;
-  }
+  if (!profileComplete) return null;
+  if (mindProfileComplete) return null;
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -81,24 +85,36 @@ export function MindQuestionsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-clario-bg-50 px-4 py-10">
-      <Card className="mx-auto max-w-2xl" padding="lg">
-        <p className="font-bold text-clario-primary-600">Step 2 of 2 · Asked once</p>
-        <h1 className="mt-2 text-3xl font-black text-clario-surface-900">Your learning Mind Profile</h1>
-        <p className="mt-2 text-clario-surface-600">Indha answers unga profile-la save aagum; every session-layum repeat panna maattom.</p>
-        <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
+    <div className="min-h-screen bg-clario-bg-50 px-4 py-12 flex items-center justify-center">
+      <Card variant="default" className="mx-auto w-full max-w-2xl shadow-[0_6px_0_#E5E5E5]" padding="lg">
+        <div className="text-center mb-8">
+          <p className="font-black uppercase tracking-widest text-clario-primary-600 text-xs mb-2">Step 2 of 2 · Asked once</p>
+          <h1 className="text-3xl font-black text-clario-surface-900 tracking-tight">Your learning Mind Profile</h1>
+          <p className="mt-2 text-clario-surface-600 font-semibold">These answers will be saved to your profile; we won't ask them again in every session.</p>
+        </div>
+
+        <form className="space-y-8" onSubmit={handleSubmit}>
           {QUESTIONS.map(question => (
-            <fieldset key={question.key}>
-              <legend className="mb-2 font-bold text-clario-surface-900">{question.label}</legend>
-              <div className="grid gap-2 sm:grid-cols-2">
+            <fieldset key={question.key} className="space-y-3">
+              <legend className="text-lg font-black text-clario-surface-900 mb-4">{question.label}</legend>
+              <div className="grid gap-3 sm:grid-cols-2">
                 {question.options.map(option => (
-                  <label key={option} className="flex cursor-pointer items-center gap-3 rounded-xl border border-clario-surface-200 bg-white p-3">
+                  <label
+                    key={option}
+                    className={cn(
+                      "flex cursor-pointer items-center gap-3 rounded-clario-md border-2 p-4 transition-all duration-150 font-bold text-sm",
+                      answers[question.key] === option
+                        ? "border-clario-green bg-clario-green-t text-clario-green-deep shadow-[inset_0_-2px_0_#58CC02]"
+                        : "border-clario-line bg-white hover:border-clario-green-t text-clario-surface-700 hover:bg-clario-bg-50"
+                    )}
+                  >
                     <input
                       type="radio"
                       name={question.key}
                       value={option}
                       checked={answers[question.key] === option}
                       onChange={() => setAnswers(previous => ({ ...previous, [question.key]: option }))}
+                      className="w-4 h-4 text-clario-green focus:ring-clario-green-t"
                       required
                     />
                     <span>{option}</span>
@@ -107,10 +123,18 @@ export function MindQuestionsPage() {
               </div>
             </fieldset>
           ))}
-          {error && <p role="alert" className="rounded-xl bg-clario-attention-50 p-3 text-clario-attention-700">{error}</p>}
-          <Button type="submit" variant="primary" fullWidth disabled={isSaving}>
-            {isSaving ? 'Saving...' : 'Finish setup'}
-          </Button>
+
+          {error && (
+            <div className="p-4 bg-clario-red-t border-2 border-clario-red-sh rounded-clario-md text-clario-red-sh font-bold text-sm animate-shake">
+              <span className="mr-2">⚠️</span> {error}
+            </div>
+          )}
+
+          <div className="pt-4">
+            <Button type="submit" variant="primary" fullWidth className="py-4 text-lg" disabled={isSaving}>
+              {isSaving ? 'Saving...' : 'Finish setup'}
+            </Button>
+          </div>
         </form>
       </Card>
     </div>

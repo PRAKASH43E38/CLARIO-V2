@@ -5,18 +5,19 @@ from sqlalchemy.orm import Session
 from backend.app.api.schemas import AuthRequest, AuthResponse, UserProfileResponse
 from backend.app.core.database import get_db
 from backend.app.models.repositories import UserRepository, MindProfileRepository
-from backend.app.services.passwords import hash_password, verify_password
+from backend.app.services.auth_service import hash_password, verify_password, create_access_token
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 
-def _auth_response(db: Session, user) -> AuthResponse:
+def _auth_response(db: Session, user, token: str = None) -> AuthResponse:
     return AuthResponse(
         user_id=user.id,
         email=user.email,
         authentication_provider=user.authentication_provider,
         profile_complete=user.name is not None,
         mind_profile_complete=MindProfileRepository.get_by_user_id(db, user.id) is not None,
+        access_token=token,
     )
 
 
@@ -45,7 +46,9 @@ async def register(request: AuthRequest, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=409, detail="An account with this email already exists."
         ) from exc
-    return _auth_response(db, user)
+
+    token = create_access_token(data={"sub": user.id})
+    return _auth_response(db, user, token=token)
 
 
 @router.post("/login", response_model=AuthResponse)
@@ -57,4 +60,6 @@ async def login(request: AuthRequest, db: Session = Depends(get_db)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email or password is incorrect.",
         )
-    return _auth_response(db, user)
+
+    token = create_access_token(data={"sub": user.id})
+    return _auth_response(db, user, token=token)

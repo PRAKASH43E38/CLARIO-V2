@@ -14,7 +14,9 @@ class User(Base):
     gender = Column(String, nullable=True)
     basic_details = Column(Text, nullable=True)
     authentication_provider = Column(String, nullable=False, default="email")
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
 
     learner_profile = relationship("LearnerProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
     mind_profile = relationship("MindProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")

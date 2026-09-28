@@ -80,6 +80,40 @@ def test_zayn_task_contract_rejects_extra_fields():
         ZaynTask.model_validate(task)
 
 
+def test_zayn_rejects_question_ids_and_wording_from_previous_attempts():
+    task = _task().model_copy(
+        update={
+            "previous_question_ids": ["q1"],
+            "previous_question_texts": ["Previously asked question."],
+        }
+    )
+    response = {
+        "difficulty": "EASY",
+        "questions": [
+            {
+                "question_id": f"q{i}",
+                "question": (
+                    "Previously asked question."
+                    if i == 1
+                    else f"New question {i}?"
+                ),
+                "options": ["A", "B"],
+                "correct_answer": "A",
+                "explanation": "Explanation.",
+                "difficulty": "EASY",
+                "concept_id": "con_1",
+            }
+            for i in range(1, 6)
+        ],
+    }
+    provider = MockAIProvider(
+        custom_responses={ZaynGeneratedQuiz.__name__: response}
+    )
+
+    with pytest.raises(ZaynResponseError, match="earlier attempt"):
+        ZaynQuizAgent(provider).create_quiz(task)
+
+
 @pytest.mark.parametrize(
     ("response", "message"),
     [

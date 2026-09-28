@@ -26,6 +26,8 @@ class ResearchRequest(BaseModel):
     interest: str
     learner_level: Literal["beginner", "intermediate", "advanced"]
     recommended_starting_level: str
+    current_level_id: Optional[str] = None
+    current_level_title: Optional[str] = None
     current_topic: ResearchTopicContext
     research_objective: str
 

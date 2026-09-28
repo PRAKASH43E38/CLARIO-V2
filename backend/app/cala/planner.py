@@ -1,10 +1,13 @@
 import re
+import json
 from typing import Optional
 
+from backend.app.ai.base import BaseAIProvider
 from backend.app.cala.schemas import (
     AgentRoutingStep,
     CalaResult,
     ConfidenceState,
+    GeneratedRemainingCurriculum,
     RoadmapConcept,
     RoadmapLevel,
     RoadmapTopic,
@@ -95,25 +98,9 @@ class CalaPlanner:
                 order=1,
                 is_unlocked=True,
                 completion_state="not_started",
+                level_state="LEVEL_UNLOCKED",
                 topics=[level_one_topic],
-            ),
-            RoadmapLevel(
-                level_id="level_2",
-                title="Intermediate",
-                description="Locked until the system has valid progression evidence.",
-                order=2,
-                is_unlocked=False,
-                completion_state="not_started",
-                topics=[],
-            ),
-            RoadmapLevel(
-                level_id="level_3",
-                title="Advanced",
-                description="Locked until the system has valid progression evidence.",
-                order=3,
-                is_unlocked=False,
-                completion_state="not_started",
-                topics=[],
+                owner_session_id=session_id,
             ),
         ]
 
@@ -130,8 +117,10 @@ class CalaPlanner:
             recommended_starting_level="level_1",
             recommended_starting_level_reason=(
                 "Level 1 is the available starting level. Later levels remain "
-                "locked because this curriculum has no validated level-unlock evidence."
+                "unmaterialized until the current learning evidence supports progression."
             ),
+            current_level_id="level_1",
+            active_concept_id=concepts[0].id if concepts else None,
             learning_goal=session_inputs.goal,
             task=session_inputs.task,
             learner_state=session_inputs.learner_state,
@@ -153,6 +142,60 @@ class CalaPlanner:
                 AgentRoutingStep(agent="Zayn", purpose="Assess understanding."),
                 AgentRoutingStep(agent="Elara", purpose="Evaluate learning evidence."),
             ],
+        )
+
+    @staticmethod
+    def generate_remaining_curriculum(
+        ai_provider: BaseAIProvider,
+        plan: CalaResult,
+        current_level_id: str,
+        concept_performance: list[dict[str, object]],
+    ) -> GeneratedRemainingCurriculum:
+        current_level = next(
+            (level for level in plan.roadmap if level.level_id == current_level_id),
+            None,
+        )
+        if current_level is None:
+            raise ValueError("The completed level is not in this CALA roadmap.")
+
+        context = {
+            "goal": plan.learning_goal,
+            "task": plan.task,
+            "learner_state": plan.learner_state,
+            "interest": plan.interest,
+            "initial_learner_level": plan.learner_level,
+            "completed_level": current_level.model_dump(mode="json"),
+            "existing_roadmap": [
+                level.model_dump(mode="json") for level in plan.roadmap
+            ],
+            "concept_performance": concept_performance,
+        }
+        prompt = (
+            "Prepare the remaining ordered curriculum for this learner's goal. "
+            "Return every remaining level needed to reach the goal, or return an "
+            "empty levels list and goal_complete=true if no further levels are "
+            "needed. Do not impose a fixed number of levels. Each level must "
+            "progress beyond previously taught concepts, have ordered topics and "
+            "at least one distinct concept per topic, and remain tightly grounded "
+            "in the learner context. Do not repeat completed or existing concepts. "
+            "Return only the requested structured curriculum; do not make mastery "
+            "or progression decisions.\n\n"
+            f"Learning context:\n{json.dumps(context, ensure_ascii=True)}"
+        )
+        generated = ai_provider.generate_structured(
+            prompt=prompt,
+            response_model=GeneratedRemainingCurriculum,
+            system_instruction=(
+                "You are CALA, CLARIO's curriculum planning component. Plan "
+                "goal-relevant ordered learning levels only. CLARIO-AI retains "
+                "exclusive authority over evidence evaluation and progression."
+            ),
+            temperature=0.2,
+        )
+        return GeneratedRemainingCurriculum.model_validate(
+            generated.model_dump()
+            if isinstance(generated, GeneratedRemainingCurriculum)
+            else generated
         )
 
     @classmethod

@@ -14,6 +14,9 @@ from backend.app.models.session_concept_performance import (
     SessionConceptPerformanceRecord,
 )
 from backend.app.models.adaptive_decision import AdaptiveDecisionRecord
+from backend.app.models.adaptive_execution import AdaptiveExecutionRecord
+from backend.app.models.mind_profile import MindProfile
+from backend.app.models.session_inputs import SessionInputs
 
 __all__ = [
     "User",
@@ -35,4 +38,7 @@ __all__ = [
     "ElaraEvaluationRecord",
     "SessionConceptPerformanceRecord",
     "AdaptiveDecisionRecord",
+    "AdaptiveExecutionRecord",
+    "MindProfile",
+    "SessionInputs",
 ]

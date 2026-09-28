@@ -14,6 +14,10 @@ class SessionInputs(Base):
     goal = Column(Text, nullable=False)
     learner_state = Column(Text, nullable=False)
     interest = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
 
     session = relationship("LearningSession", back_populates="session_inputs")

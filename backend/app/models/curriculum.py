@@ -10,9 +10,16 @@ class Topic(Base):
     title = Column(String, nullable=False)
     description = Column(String, nullable=True)
     sequence_order = Column(Integer, nullable=False, default=1)
+    owner_session_id = Column(
+        String, ForeignKey("learning_sessions.id", ondelete="CASCADE"), nullable=True
+    )
 
     concepts = relationship("Concept", back_populates="topic", cascade="all, delete-orphan")
-    learning_sessions = relationship("LearningSession", back_populates="topic")
+    learning_sessions = relationship(
+        "LearningSession",
+        back_populates="topic",
+        foreign_keys="LearningSession.topic_id",
+    )
 
 class Concept(Base):
     __tablename__ = "concepts"
